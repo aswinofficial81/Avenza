@@ -13,6 +13,7 @@ import {
   XCircle,
   FileText,
   Timer,
+  Flame,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -28,6 +29,8 @@ import {
 import { EditTaskModal } from '../features/tasks/components/EditTaskModal';
 import { TaskDependencyManager } from '../features/tasks/components/TaskDependencyManager';
 import { useTask, useUpdateTask, useDeleteTask } from '../features/tasks/useTasks';
+import { useActiveFocusSession } from '../features/focus/useFocusSession';
+import { StartFocusModal } from '../features/focus/components/StartFocusModal';
 import type { TaskStatus } from '@avenza/shared';
 
 export const TaskDetailPage: React.FC = () => {
@@ -36,8 +39,10 @@ export const TaskDetailPage: React.FC = () => {
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isFocusModalOpen, setIsFocusModalOpen] = useState(false);
 
   const { data: task, isLoading, isError, error, refetch } = useTask(id);
+  const { data: activeSession } = useActiveFocusSession();
   const updateTaskMutation = useUpdateTask(id || '');
   const deleteTaskMutation = useDeleteTask();
 
@@ -173,6 +178,34 @@ export const TaskDetailPage: React.FC = () => {
                 </>
               )}
             </Button>
+
+            {/* Start Focus / In Focus */}
+            {!isCompleted &&
+              task.status !== 'cancelled' &&
+              task.status !== 'skipped' &&
+              !task.is_blocked && (
+                activeSession?.task_id === task.id && activeSession.status === 'active' ? (
+                  <Link
+                    to="/focus"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                    title="Task currently in focus. Open focus timer."
+                  >
+                    <Flame className="w-4 h-4 fill-primary text-primary" />
+                    <span>In Focus</span>
+                  </Link>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsFocusModalOpen(true)}
+                    className="flex items-center gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                    title="Start focus session on this task"
+                  >
+                    <Flame className="w-4 h-4 text-primary" />
+                    <span>Start Focus</span>
+                  </Button>
+                )
+              )}
 
             {/* Edit */}
             <Button
@@ -404,6 +437,12 @@ export const TaskDetailPage: React.FC = () => {
         confirmLabel="Delete Task"
         variant="danger"
         isLoading={deleteTaskMutation.isPending}
+      />
+
+      <StartFocusModal
+        isOpen={isFocusModalOpen}
+        onClose={() => setIsFocusModalOpen(false)}
+        preselectedTask={task ? { id: task.id, title: task.title } : null}
       />
     </div>
   );

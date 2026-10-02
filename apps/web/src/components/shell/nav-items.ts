@@ -17,6 +17,7 @@ import {
   Bot,
   Settings,
   Command,
+  Flame,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -38,6 +39,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: 'overview', label: 'Overview', href: '/overview', icon: LayoutDashboard },
       { id: 'today', label: 'Today', href: '/today', icon: CalendarCheck },
+      { id: 'focus', label: 'Focus', href: '/focus', icon: Flame },
     ],
   },
   {

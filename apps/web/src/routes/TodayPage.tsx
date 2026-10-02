@@ -7,6 +7,8 @@ import { TodayProgress } from '../features/today/components/TodayProgress';
 import { NextTaskCard } from '../features/today/components/NextTaskCard';
 import { TodaySection } from '../features/today/components/TodaySection';
 import { CreateTaskModal } from '../features/tasks/components/CreateTaskModal';
+import { useActiveFocusSession } from '../features/focus/useFocusSession';
+import { StartFocusModal } from '../features/focus/components/StartFocusModal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -20,14 +22,18 @@ import {
   CheckCircle2,
   Clock,
 } from 'lucide-react';
-import type { TaskStatus } from '@avenza/shared';
+import type { TaskStatus, TodayTaskItem } from '@avenza/shared';
 
 export const TodayPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const dateParam = searchParams.get('date') || undefined;
 
   const { data, isLoading, isError, error, refetch } = useToday(dateParam);
+  const { data: activeFocusSession } = useActiveFocusSession();
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isFocusModalOpen, setIsFocusModalOpen] = useState(false);
+  const [focusTargetTask, setFocusTargetTask] = useState<{ id: string; title: string } | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
   const api = useApiClient();
@@ -59,6 +65,14 @@ export const TodayPage: React.FC = () => {
   const handleSkip = (taskId: string) => {
     statusMutation.mutate({ taskId, status: 'skipped' });
   };
+
+  const handleStartFocus = (task: TodayTaskItem) => {
+    setFocusTargetTask({ id: task.id, title: task.title });
+    setIsFocusModalOpen(true);
+  };
+
+  const activeFocusTaskId =
+    activeFocusSession?.status === 'active' ? activeFocusSession.task_id : null;
 
   const handleDateChange = (newDateStr: string) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -183,6 +197,8 @@ export const TodayPage: React.FC = () => {
               task={next}
               onComplete={handleComplete}
               onDefer={handleDefer}
+              onStartFocus={handleStartFocus}
+              activeFocusTaskId={activeFocusTaskId}
               isCompleting={statusMutation.isPending && activeTaskId === next.id}
             />
           )}
@@ -198,6 +214,8 @@ export const TodayPage: React.FC = () => {
               onComplete={handleComplete}
               onDefer={handleDefer}
               onSkip={handleSkip}
+              onStartFocus={handleStartFocus}
+              activeFocusTaskId={activeFocusTaskId}
             />
           )}
 
@@ -212,6 +230,8 @@ export const TodayPage: React.FC = () => {
               onComplete={handleComplete}
               onDefer={handleDefer}
               onSkip={handleSkip}
+              onStartFocus={handleStartFocus}
+              activeFocusTaskId={activeFocusTaskId}
             />
           )}
 
@@ -226,6 +246,8 @@ export const TodayPage: React.FC = () => {
               onComplete={handleComplete}
               onDefer={handleDefer}
               onSkip={handleSkip}
+              onStartFocus={handleStartFocus}
+              activeFocusTaskId={activeFocusTaskId}
             />
           )}
 
@@ -240,6 +262,8 @@ export const TodayPage: React.FC = () => {
               onComplete={handleComplete}
               onDefer={handleDefer}
               onSkip={handleSkip}
+              onStartFocus={handleStartFocus}
+              activeFocusTaskId={activeFocusTaskId}
             />
           )}
 
@@ -261,6 +285,16 @@ export const TodayPage: React.FC = () => {
       <CreateTaskModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+      />
+
+      {/* Start Focus Modal */}
+      <StartFocusModal
+        isOpen={isFocusModalOpen}
+        onClose={() => {
+          setIsFocusModalOpen(false);
+          setFocusTargetTask(null);
+        }}
+        preselectedTask={focusTargetTask}
       />
     </div>
   );

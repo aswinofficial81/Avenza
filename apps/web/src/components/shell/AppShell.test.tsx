@@ -1,12 +1,17 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell } from './AppShell';
 import { ThemeProvider } from '../../lib/theme';
 
-// Mock Clerk UserButton
+// Mock Clerk UserButton & useAuth
 vi.mock('@clerk/clerk-react', () => ({
   UserButton: () => <div data-testid="mock-user-button">UserButton</div>,
+  useAuth: () => ({
+    getToken: vi.fn().mockResolvedValue('mock-token'),
+    isSignedIn: true,
+  }),
 }));
 
 describe('AppShell & Navigation Foundation', () => {
@@ -15,14 +20,20 @@ describe('AppShell & Navigation Foundation', () => {
   });
 
   const renderShell = (initialEntries = ['/overview']) => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
     return render(
-      <ThemeProvider>
-        <MemoryRouter initialEntries={initialEntries}>
-          <AppShell>
-            <div data-testid="page-content">Main Page Content</div>
-          </AppShell>
-        </MemoryRouter>
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <MemoryRouter initialEntries={initialEntries}>
+            <AppShell>
+              <div data-testid="page-content">Main Page Content</div>
+            </AppShell>
+          </MemoryRouter>
+        </ThemeProvider>
+      </QueryClientProvider>
     );
   };
 

@@ -12,6 +12,8 @@ export const TodayProgress: React.FC<TodayProgressProps> = ({ summary }) => {
   const {
     completedTaskCount,
     meaningfulMinutes,
+    focusMinutes = 0,
+    fallbackTaskActualMinutes = 0,
     estimatedMinutesWithoutActual,
     dailyMinimum,
     dailyTarget,
@@ -36,6 +38,18 @@ export const TodayProgress: React.FC<TodayProgressProps> = ({ summary }) => {
               </span>
               <span className="text-sm font-medium text-muted-foreground">actual min</span>
             </div>
+
+            {focusMinutes > 0 && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
+                {focusMinutes}m focus
+              </span>
+            )}
+
+            {fallbackTaskActualMinutes > 0 && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
+                {fallbackTaskActualMinutes}m manual
+              </span>
+            )}
 
             {estimatedMinutesWithoutActual > 0 && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">

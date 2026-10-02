@@ -315,6 +315,64 @@ export interface Database {
           },
         ];
       };
+      focus_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          task_id: string | null;
+          session_type: string;
+          status: string;
+          started_at: string;
+          ended_at: string | null;
+          planned_minutes: number;
+          actual_minutes: number | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          task_id?: string | null;
+          session_type?: string;
+          status?: string;
+          started_at?: string;
+          ended_at?: string | null;
+          planned_minutes: number;
+          actual_minutes?: number | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          task_id?: string | null;
+          session_type?: string;
+          status?: string;
+          started_at?: string;
+          ended_at?: string | null;
+          planned_minutes?: number;
+          actual_minutes?: number | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_focus_sessions_user_id';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_focus_sessions_task_id';
+            columns: ['task_id'];
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {

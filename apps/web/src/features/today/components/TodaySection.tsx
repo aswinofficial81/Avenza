@@ -11,6 +11,8 @@ export interface TodaySectionProps {
   onComplete: (taskId: string) => void;
   onDefer?: (taskId: string) => void;
   onSkip?: (taskId: string) => void;
+  onStartFocus?: (task: TodayTaskItem) => void;
+  activeFocusTaskId?: string | null;
   emptyMessage?: string;
 }
 
@@ -23,6 +25,8 @@ export const TodaySection: React.FC<TodaySectionProps> = ({
   onComplete,
   onDefer,
   onSkip,
+  onStartFocus,
+  activeFocusTaskId,
   emptyMessage,
 }) => {
   if (tasks.length === 0 && !emptyMessage) {
@@ -61,6 +65,8 @@ export const TodaySection: React.FC<TodaySectionProps> = ({
               onComplete={onComplete}
               onDefer={onDefer}
               onSkip={onSkip}
+              onStartFocus={onStartFocus}
+              activeFocusTaskId={activeFocusTaskId}
             />
           ))}
         </div>

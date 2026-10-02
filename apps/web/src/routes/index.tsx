@@ -8,6 +8,8 @@ import { GoalDetailPage } from './GoalDetailPage';
 import { TasksPage } from './TasksPage';
 import { TaskDetailPage } from './TaskDetailPage';
 import { TodayPage } from './TodayPage';
+import { FocusPage } from './FocusPage';
+import { FocusHistoryPage } from './FocusHistoryPage';
 import { PlaceholderPage } from './PlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -16,6 +18,8 @@ export const AppRoutes: React.FC = () => {
       <Route path="/" element={<Navigate to="/overview" replace />} />
       <Route path="/overview" element={<OverviewPage />} />
       <Route path="/today" element={<TodayPage />} />
+      <Route path="/focus" element={<FocusPage />} />
+      <Route path="/focus/history" element={<FocusHistoryPage />} />
       <Route
         path="/academics/terms"
         element={

@@ -7,13 +7,15 @@ import {
   TaskTypeBadge,
 } from '../../tasks/components/TaskBadges';
 import { Button } from '../../../components/ui/Button';
-import { CheckCircle2, Circle, Clock, FastForward, SkipForward, ExternalLink } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, FastForward, SkipForward, ExternalLink, Flame } from 'lucide-react';
 
 export interface TodayTaskRowProps {
   task: TodayTaskItem;
   onComplete: (taskId: string) => void;
   onDefer?: (taskId: string) => void;
   onSkip?: (taskId: string) => void;
+  onStartFocus?: (task: TodayTaskItem) => void;
+  activeFocusTaskId?: string | null;
   isActionLoading?: boolean;
 }
 
@@ -22,6 +24,8 @@ export const TodayTaskRow: React.FC<TodayTaskRowProps> = ({
   onComplete,
   onDefer,
   onSkip,
+  onStartFocus,
+  activeFocusTaskId,
   isActionLoading,
 }) => {
   const isCompleted = task.status === 'completed';
@@ -110,6 +114,32 @@ export const TodayTaskRow: React.FC<TodayTaskRowProps> = ({
 
       {/* Row Actions */}
       <div className="flex items-center gap-1 self-end sm:self-center flex-shrink-0">
+        {/* Start Focus / Focus Active Action */}
+        {!isCompleted && !task.is_blocked && (
+          activeFocusTaskId === task.id ? (
+            <Link
+              to="/focus"
+              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+              title="Session currently active. Open focus timer."
+            >
+              <Flame className="w-3.5 h-3.5 fill-primary text-primary" />
+              <span>In Focus</span>
+            </Link>
+          ) : onStartFocus ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onStartFocus(task)}
+              disabled={isActionLoading}
+              className="h-8 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+              title="Start focus session on this task"
+            >
+              <Flame className="w-3.5 h-3.5 sm:mr-1 text-primary" />
+              <span className="hidden sm:inline font-medium">Focus</span>
+            </Button>
+          ) : null
+        )}
+
         {!isCompleted && onDefer && (
           <Button
             variant="ghost"

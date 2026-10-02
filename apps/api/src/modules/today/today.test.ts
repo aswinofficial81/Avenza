@@ -12,6 +12,7 @@ import { TodayService } from './today.service';
 import { TodayController } from './today.controller';
 import { createTodayRoutes } from './today.routes';
 import { registerErrorHandler } from '../../plugins/error-handler';
+import { InMemoryFocusRepository } from '../focus/focus.repository';
 import type { TodayTaskItem } from '@avenza/shared';
 
 describe('Today API & Execution Domain (/api/v1/today)', () => {
@@ -39,6 +40,7 @@ describe('Today API & Execution Domain (/api/v1/today)', () => {
   let preferencesRepository: InMemoryPreferencesRepository;
   let goalsRepository: InMemoryGoalsRepository;
   let tasksRepository: InMemoryTasksRepository;
+  let focusRepository: InMemoryFocusRepository;
   let todayService: TodayService;
   let todayController: TodayController;
   let app: ReturnType<typeof fastify>;
@@ -52,12 +54,14 @@ describe('Today API & Execution Domain (/api/v1/today)', () => {
     preferencesRepository = new InMemoryPreferencesRepository();
     goalsRepository = new InMemoryGoalsRepository();
     tasksRepository = new InMemoryTasksRepository();
+    focusRepository = new InMemoryFocusRepository();
 
     todayService = new TodayService(
       tasksRepository,
       goalsRepository,
       profileRepository,
-      preferencesRepository
+      preferencesRepository,
+      focusRepository
     );
 
     todayController = new TodayController(todayService);
@@ -589,6 +593,241 @@ describe('Today API & Execution Domain (/api/v1/today)', () => {
       expect(data.dueToday).toHaveLength(0);
       expect(data.overdue).toHaveLength(0);
       expect(data.next).toBeNull();
+    });
+  });
+
+  describe('Focus Sessions Integration & Precedence in Today', () => {
+    it('counts completed focus sessions toward focusMinutes and meaningfulMinutes', async () => {
+      const task = await tasksRepository.createTask({
+        user_id: aliceUserId,
+        title: 'Learn Distributed Systems',
+        status: 'in_progress',
+        priority: 'high',
+        task_type: 'study',
+        goal_id: null,
+        milestone_id: null,
+        estimated_minutes: 60,
+        actual_minutes: null,
+        due_at: null,
+        scheduled_start: null,
+        scheduled_end: null,
+        completed_at: null,
+        notes: null,
+      });
+
+      // Seed a completed focus session of 45 minutes on 2026-10-03
+      await focusRepository.createSession({
+        user_id: aliceUserId,
+        task_id: task.id,
+        session_type: 'deep_work',
+        status: 'completed',
+        started_at: '2026-10-03T05:00:00.000Z',
+        ended_at: '2026-10-03T05:45:00.000Z',
+        planned_minutes: 45,
+        actual_minutes: 45,
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/today?date=2026-10-03',
+        headers: { authorization: 'Bearer token-alice' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const { summary } = response.json().data;
+      expect(summary.focusMinutes).toBe(45);
+      expect(summary.fallbackTaskActualMinutes).toBe(0);
+      expect(summary.meaningfulMinutes).toBe(45);
+    });
+
+    it('enforces precedence and prevents double counting when task also has actual_minutes', async () => {
+      // Task is completed and has actual_minutes = 50, but also has a focus session of 40 mins
+      const task = await tasksRepository.createTask({
+        user_id: aliceUserId,
+        title: 'Review System Architecture',
+        status: 'completed',
+        priority: 'high',
+        task_type: 'project',
+        goal_id: null,
+        milestone_id: null,
+        estimated_minutes: 60,
+        actual_minutes: 50,
+        due_at: null,
+        scheduled_start: null,
+        scheduled_end: null,
+        completed_at: '2026-10-03T08:00:00.000Z',
+        notes: null,
+      });
+
+      await focusRepository.createSession({
+        user_id: aliceUserId,
+        task_id: task.id,
+        session_type: 'focus',
+        status: 'completed',
+        started_at: '2026-10-03T07:10:00.000Z',
+        ended_at: '2026-10-03T07:50:00.000Z',
+        planned_minutes: 40,
+        actual_minutes: 40,
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/today?date=2026-10-03',
+        headers: { authorization: 'Bearer token-alice' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const { summary } = response.json().data;
+      // Focus session must take precedence (40 mins), task.actual_minutes (50) must NOT be added (Total 40, not 90)
+      expect(summary.focusMinutes).toBe(40);
+      expect(summary.fallbackTaskActualMinutes).toBe(0);
+      expect(summary.meaningfulMinutes).toBe(40);
+    });
+
+    it('falls back to task.actual_minutes only when no focus sessions exist for that task', async () => {
+      await tasksRepository.createTask({
+        user_id: aliceUserId,
+        title: 'Read Documentation',
+        status: 'completed',
+        priority: 'medium',
+        task_type: 'study',
+        goal_id: null,
+        milestone_id: null,
+        estimated_minutes: 30,
+        actual_minutes: 25,
+        due_at: null,
+        scheduled_start: null,
+        scheduled_end: null,
+        completed_at: '2026-10-03T09:00:00.000Z',
+        notes: null,
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/today?date=2026-10-03',
+        headers: { authorization: 'Bearer token-alice' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const { summary } = response.json().data;
+      expect(summary.focusMinutes).toBe(0);
+      expect(summary.fallbackTaskActualMinutes).toBe(25);
+      expect(summary.meaningfulMinutes).toBe(25);
+    });
+
+    it('excludes cancelled and active focus sessions from meaningful minutes', async () => {
+      const task = await tasksRepository.createTask({
+        user_id: aliceUserId,
+        title: 'Testing Edge Cases',
+        status: 'in_progress',
+        priority: 'low',
+        task_type: 'practice',
+        goal_id: null,
+        milestone_id: null,
+        estimated_minutes: 40,
+        actual_minutes: null,
+        due_at: null,
+        scheduled_start: null,
+        scheduled_end: null,
+        completed_at: null,
+        notes: null,
+      });
+
+      // 1 active session (should not count)
+      await focusRepository.createSession({
+        user_id: aliceUserId,
+        task_id: task.id,
+        session_type: 'focus',
+        status: 'active',
+        started_at: '2026-10-03T10:00:00.000Z',
+        planned_minutes: 30,
+      });
+
+      // 1 cancelled session (should not count)
+      const cancelled = await focusRepository.createSession({
+        user_id: aliceUserId,
+        task_id: task.id,
+        session_type: 'focus',
+        status: 'cancelled',
+        started_at: '2026-10-03T11:00:00.000Z',
+        planned_minutes: 30,
+      });
+      await focusRepository.cancelSession(cancelled.id, aliceUserId, '2026-10-03T11:10:00.000Z');
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/today?date=2026-10-03',
+        headers: { authorization: 'Bearer token-alice' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const { summary } = response.json().data;
+      expect(summary.focusMinutes).toBe(0);
+      expect(summary.meaningfulMinutes).toBe(0);
+    });
+
+    it('attributes entire cross-midnight session to its start date', async () => {
+      const task = await tasksRepository.createTask({
+        user_id: aliceUserId,
+        title: 'Midnight Coding',
+        status: 'in_progress',
+        priority: 'high',
+        task_type: 'project',
+        goal_id: null,
+        milestone_id: null,
+        estimated_minutes: 60,
+        actual_minutes: null,
+        due_at: null,
+        scheduled_start: null,
+        scheduled_end: null,
+        completed_at: null,
+        notes: null,
+      });
+
+      // Set Alice preferences timezone to UTC for clean cross-midnight testing
+      preferencesRepository.setPreferences({
+        id: 'pref-alice',
+        user_id: aliceUserId,
+        theme: 'system',
+        timezone: 'UTC',
+        preferred_study_start: null,
+        preferred_study_end: null,
+        daily_minimum_minutes: 45,
+        daily_target_minutes: 120,
+        max_daily_study_minutes: 240,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      // Session starts at 23:45 UTC on 2026-10-03 and completes at 00:30 UTC on 2026-10-04 (45 mins)
+      await focusRepository.createSession({
+        user_id: aliceUserId,
+        task_id: task.id,
+        session_type: 'focus',
+        status: 'completed',
+        started_at: '2026-10-03T23:45:00.000Z',
+        ended_at: '2026-10-04T00:30:00.000Z',
+        planned_minutes: 45,
+        actual_minutes: 45,
+      });
+
+      // Check on 2026-10-03 in UTC
+      const resOct3 = await app.inject({
+        method: 'GET',
+        url: '/api/v1/today?date=2026-10-03&timezone=UTC',
+        headers: { authorization: 'Bearer token-alice' },
+      });
+      expect(resOct3.statusCode).toBe(200);
+      expect(resOct3.json().data.summary.focusMinutes).toBe(45);
+
+      // Check on 2026-10-04 in UTC - should NOT count on the next day
+      const resOct4 = await app.inject({
+        method: 'GET',
+        url: '/api/v1/today?date=2026-10-04&timezone=UTC',
+        headers: { authorization: 'Bearer token-alice' },
+      });
+      expect(resOct4.statusCode).toBe(200);
+      expect(resOct4.json().data.summary.focusMinutes).toBe(0);
     });
   });
 });

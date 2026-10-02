@@ -506,6 +506,15 @@ export class InMemoryTasksRepository implements ITasksRepository {
   private tasks: Map<string, TaskRow> = new Map();
   private dependencies: Map<string, TaskDependencyRow> = new Map();
 
+  constructor(initialTasks: TaskRow[] = [], initialDeps: TaskDependencyRow[] = []) {
+    for (const t of initialTasks) {
+      this.tasks.set(t.id, { ...t });
+    }
+    for (const d of initialDeps) {
+      this.dependencies.set(d.id, { ...d });
+    }
+  }
+
   async findTasks(options: TaskFindOptions): Promise<PaginatedList<TaskRow>> {
     const {
       userId,

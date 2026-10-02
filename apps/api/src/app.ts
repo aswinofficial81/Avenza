@@ -7,6 +7,7 @@ import { profileRoutes } from './modules/identity/profile.routes';
 import { goalsRoutes } from './modules/goals/goals.routes';
 import { tasksRoutes } from './modules/tasks/tasks.routes';
 import { todayRoutes } from './modules/today/today.routes';
+import { focusRoutes } from './modules/focus/focus.routes';
 
 export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   const app = fastify({
@@ -61,6 +62,9 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
 
   // Register today execution routes
   app.register(todayRoutes);
+
+  // Register focus session routes
+  app.register(focusRoutes);
 
   return app;
 }

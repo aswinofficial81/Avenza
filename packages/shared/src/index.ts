@@ -45,3 +45,6 @@ export * from './tasks.types';
 // Today Execution Types & Schemas
 export * from './today.types';
 
+// Focus Sessions Types & Schemas
+export * from './focus.types';
+

@@ -15,6 +15,8 @@ import type { IProfileRepository } from '../identity/profile.repository';
 import { defaultProfileRepository } from '../identity/profile.repository';
 import type { IPreferencesRepository } from '../preferences/preferences.repository';
 import { defaultPreferencesRepository } from '../preferences/preferences.repository';
+import type { IFocusRepository } from '../focus/focus.types';
+import { defaultFocusRepository } from '../focus/focus.repository';
 import {
   getTodayBoundaries,
   isValidTimezone,
@@ -28,7 +30,8 @@ export class TodayService implements ITodayService {
     private readonly tasksRepository: ITasksRepository = defaultTasksRepository,
     private readonly goalsRepository: IGoalsRepository = defaultGoalsRepository,
     private readonly profileRepository: IProfileRepository = defaultProfileRepository,
-    private readonly preferencesRepository: IPreferencesRepository = defaultPreferencesRepository
+    private readonly preferencesRepository: IPreferencesRepository = defaultPreferencesRepository,
+    private readonly focusRepository: IFocusRepository = defaultFocusRepository
   ) {}
 
   async getToday(userId: string, query?: TodayQueryInput): Promise<TodayResponse> {
@@ -298,13 +301,39 @@ export class TodayService implements ITodayService {
     }
 
     // 9. Calculate Meaningful Work & Progress Summary
-    let meaningfulMinutes = 0;
+    // Phase 8: Focus Sessions take precedence over task.actual_minutes.
+    // Query completed focus sessions in user's local day [startOfToday, endOfToday]
+    const completedFocusSessions = await this.focusRepository.findCompletedSessionsBetween(
+      userId,
+      startOfToday,
+      endOfToday
+    );
+
+    let focusMinutes = 0;
+    const tasksWithFocusToday = new Set<string>();
+
+    for (const session of completedFocusSessions) {
+      if (session.actual_minutes && session.actual_minutes > 0) {
+        focusMinutes += session.actual_minutes;
+      }
+      if (session.task_id) {
+        tasksWithFocusToday.add(session.task_id);
+      }
+    }
+
+    let fallbackTaskActualMinutes = 0;
     let estimatedMinutesWithoutActual = 0;
 
     for (const completed of completedToday) {
+      // If task had completed focus session(s) today, its execution is already captured in focusMinutes.
+      // Do NOT double count task.actual_minutes!
+      if (tasksWithFocusToday.has(completed.id)) {
+        continue;
+      }
+
       if (completed.actual_minutes !== null && completed.actual_minutes !== undefined) {
         if (completed.actual_minutes > 0) {
-          meaningfulMinutes += completed.actual_minutes;
+          fallbackTaskActualMinutes += completed.actual_minutes;
         }
       } else if (
         completed.estimated_minutes !== null &&
@@ -314,6 +343,8 @@ export class TodayService implements ITodayService {
         estimatedMinutesWithoutActual += completed.estimated_minutes;
       }
     }
+
+    const meaningfulMinutes = focusMinutes + fallbackTaskActualMinutes;
 
     const dailyMinimum = preferences?.daily_minimum_minutes ?? 30;
     const dailyTarget = preferences?.daily_target_minutes ?? 120;
@@ -330,6 +361,8 @@ export class TodayService implements ITodayService {
     const summary: TodaySummary = {
       completedTaskCount: completedToday.length,
       meaningfulMinutes,
+      focusMinutes,
+      fallbackTaskActualMinutes,
       estimatedMinutesWithoutActual,
       dailyMinimum,
       dailyTarget,

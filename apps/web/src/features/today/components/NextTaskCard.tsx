@@ -4,12 +4,14 @@ import type { TodayTaskItem } from '@avenza/shared';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { TaskPriorityBadge, TaskTypeBadge } from '../../tasks/components/TaskBadges';
-import { ArrowRight, CheckCircle2, Clock, FastForward, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock, FastForward, Sparkles, Flame } from 'lucide-react';
 
 export interface NextTaskCardProps {
   task: TodayTaskItem | null;
   onComplete: (taskId: string) => void;
   onDefer: (taskId: string) => void;
+  onStartFocus?: (task: TodayTaskItem) => void;
+  activeFocusTaskId?: string | null;
   isCompleting?: boolean;
 }
 
@@ -17,6 +19,8 @@ export const NextTaskCard: React.FC<NextTaskCardProps> = ({
   task,
   onComplete,
   onDefer,
+  onStartFocus,
+  activeFocusTaskId,
   isCompleting,
 }) => {
   if (!task) return null;
@@ -76,6 +80,30 @@ export const NextTaskCard: React.FC<NextTaskCardProps> = ({
 
         {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {!task.is_blocked && (
+            activeFocusTaskId === task.id ? (
+              <Link
+                to="/focus"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                title="Task currently in focus. Open focus timer."
+              >
+                <Flame className="w-4 h-4 fill-primary text-primary" />
+                <span>In Focus</span>
+              </Link>
+            ) : onStartFocus ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onStartFocus(task)}
+                className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                title="Start focus session on this task"
+              >
+                <Flame className="w-4 h-4 text-primary" />
+                <span>Focus</span>
+              </Button>
+            ) : null
+          )}
+
           <Button
             variant="primary"
             size="sm"

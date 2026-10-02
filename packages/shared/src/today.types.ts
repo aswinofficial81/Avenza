@@ -4,6 +4,8 @@ import type { TaskDto } from './tasks.types';
 export interface TodaySummary {
   completedTaskCount: number;
   meaningfulMinutes: number;
+  focusMinutes?: number;
+  fallbackTaskActualMinutes?: number;
   estimatedMinutesWithoutActual: number;
   dailyMinimum: number;
   dailyTarget: number;

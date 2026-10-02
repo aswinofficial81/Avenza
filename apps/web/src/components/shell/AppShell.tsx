@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
+import { ActiveFocusBanner } from '../../features/focus/components/ActiveFocusBanner';
 import { cn } from '../../lib/utils';
 
 export interface AppShellProps {
@@ -71,6 +72,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           onToggleMobileSidebar={() => setIsMobileOpen((prev) => !prev)}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         />
+
+        {/* Calm Persistent Active Focus Session Indicator */}
+        <ActiveFocusBanner />
 
         {/* Page Content Viewport */}
         <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
