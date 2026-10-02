@@ -32,3 +32,6 @@ export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 // Database Types & Schemas
 export * from './database.types';
+
+// Auth Types
+export * from './auth.types';

@@ -140,7 +140,69 @@ Avenza employs **Supabase PostgreSQL** as its single, authoritative database. OR
 
 ---
 
-## 5. Future Integration Boundaries & Security
+## 5. Authentication & Authorization Architecture
+
+Avenza establishes a verified cryptographic identity pipeline connecting Clerk, the Fastify API, and Supabase PostgreSQL:
+
+```
+Clerk Auth (Authoritative)
+       ↓
+React Client (apps/web)
+       ↓
+Authorization: Bearer <clerk_token>
+       ↓
+Fastify API (apps/api - requireAuth preHandler)
+       ↓
+Verified clerk_user_id
+       ↓
+profiles.clerk_user_id (Database Anchor)
+       ↓
+profiles.id (Application Identity)
+       ↓
+user-owned domain entities (Preferences, etc.)
+```
+
+### 5.1 Authoritative Identity Provider
+
+- **Clerk** owns all credential storage, password security, session lifecycles, and MFA.
+- Fastify and Supabase store **zero** user passwords, provider tokens, or session credentials.
+
+### 5.2 Server-Determined Identity
+
+- The client is **never** trusted to specify its identity. Request bodies or headers containing arbitrary user IDs (e.g. `userId: "xyz"`) are ignored.
+- The authenticated identity is extracted exclusively by Fastify verifying the Clerk JWT token server-side via `@clerk/backend`.
+
+### 5.3 Idempotent Profile Bootstrap
+
+- When a verified user interacts with the API, `ProfileService.getOrCreateProfile` looks up `public.profiles` by `clerk_user_id`.
+- If no profile exists, a new profile is bootstrapped with `clerk_user_id` and verified metadata (name, avatar, timezone).
+- Uniqueness constraints on `clerk_user_id` in PostgreSQL prevent duplicate profile creation under race conditions.
+
+### 5.4 Protected API Routes & Middleware
+
+- Application endpoints under `/api/v1` (such as `GET /api/v1/auth/me`) require the `requireAuth` preHandler hook.
+- Unauthenticated requests receive HTTP 401 with standard API error responses (`{ success: false, error: { code: 'UNAUTHORIZED', ... } }`).
+- Public endpoints (such as `GET /health`) remain accessible without credentials.
+
+### 5.5 Frontend Token Handling & API Client
+
+- The React application utilizes `@clerk/clerk-react` and obtains active session tokens dynamically via `useAuth().getToken()`.
+- Authentication tokens are **never** stored in `localStorage` or `sessionStorage`.
+- `ApiClient` attaches `Authorization: Bearer <token>` dynamically to Fastify requests.
+
+### 5.6 Service-Role Boundary & RLS Relationship
+
+- Fastify interacts with Supabase using `SUPABASE_SERVICE_ROLE_KEY` exclusively on the server.
+- The Fastify authorization layer serves as the primary application boundary, validating the user's Clerk token before executing database operations.
+- Supabase Row Level Security (RLS) remains active as defense-in-depth, enforcing policies that permit service-role administrative operations and direct PostgREST client queries matching `auth.jwt() ->> 'sub'`.
+
+### 5.7 CORS Configuration
+
+- Fastify configures `@fastify/cors` restricted specifically to `CORS_ORIGIN` (defaults to `http://localhost:3000`). Wildcard origins (`*`) are prohibited.
+
+---
+
+## 6. Future Integration Boundaries & Security
 
 Security and credential boundaries are strictly enforced:
 
@@ -179,7 +241,7 @@ Security and credential boundaries are strictly enforced:
 
 ---
 
-## 6. Architectural Decisions Log (ADR)
+## 7. Architectural Decisions Log (ADR)
 
 | Decision                        | Rationale                                                                                                                     | Alternatives Considered                                         |
 | :------------------------------ | :---------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------- |
@@ -190,5 +252,7 @@ Security and credential boundaries are strictly enforced:
 | **Raw SQL Supabase Migrations** | Deterministic DDL, native PostgreSQL feature support (triggers, RLS, functions), no ORM impedance mismatch.                   | Prisma, Drizzle, TypeORM                                        |
 | **Clerk as Identity Anchor**    | Complete separation of identity/auth concerns from core application state; profiles link via `clerk_user_id`.                 | Local auth tables, Supabase native auth                         |
 | **Dual RLS Strategy**           | Full defense-in-depth: PostgREST client policies verify Clerk JWT `sub`, while API operates via secure service-role.          | No RLS (insecure), client-only RLS                              |
+| **Server-Derived Identity**     | Fastify verifies Clerk token server-side; client cannot choose or forge its user ID.                                          | Client-supplied `userId` parameter                              |
+| **On-Demand Token Fetching**    | Frontend fetches tokens via Clerk SDK without localStorage caching to mitigate XSS exposure.                                  | LocalStorage/cookie custom storage                              |
 | **Strict TypeScript Policy**    | Strict null checks, `noImplicitAny`, forbidden `@ts-ignore` / `@ts-nocheck` to guarantee build-time reliability.              | Permissive TypeScript                                           |
 | **No Premature Feature Code**   | Incremental progression avoids speculative technical debt or fake data.                                                       | Mocking full product UI upfront                                 |

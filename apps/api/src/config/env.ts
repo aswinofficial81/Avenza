@@ -7,6 +7,7 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().default(3001),
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  CORS_ORIGIN: z.string().default('http://localhost:3000'),
 
   // Future configuration placeholders (optional during Phase 1 foundation)
   CLERK_SECRET_KEY: z.string().optional(),
