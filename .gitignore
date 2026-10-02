@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 .output/
+*.tsbuildinfo
 
 # Environment files - strictly ignore real secrets
 .env

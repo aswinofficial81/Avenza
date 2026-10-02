@@ -1,7 +1,8 @@
 {
   "extends": "./packages/config/tsconfig.base.json",
   "compilerOptions": {
+    "allowJs": true,
     "noEmit": true
   },
-  "references": [{ "path": "packages/shared" }, { "path": "apps/api" }, { "path": "apps/web" }]
+  "include": ["eslint.config.mjs"]
 }

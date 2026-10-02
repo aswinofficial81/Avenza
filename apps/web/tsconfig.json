@@ -1,5 +1,5 @@
 {
-  "extends": "@avenza/config/tsconfig.react.json",
+  "extends": "../../packages/config/tsconfig.react.json",
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "bundler",
