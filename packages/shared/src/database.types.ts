@@ -199,6 +199,122 @@ export interface Database {
           },
         ];
       };
+      tasks: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          description: string | null;
+          status: string;
+          priority: string;
+          task_type: string;
+          goal_id: string | null;
+          milestone_id: string | null;
+          estimated_minutes: number | null;
+          actual_minutes: number | null;
+          due_at: string | null;
+          scheduled_start: string | null;
+          scheduled_end: string | null;
+          completed_at: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          description?: string | null;
+          status?: string;
+          priority?: string;
+          task_type?: string;
+          goal_id?: string | null;
+          milestone_id?: string | null;
+          estimated_minutes?: number | null;
+          actual_minutes?: number | null;
+          due_at?: string | null;
+          scheduled_start?: string | null;
+          scheduled_end?: string | null;
+          completed_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          description?: string | null;
+          status?: string;
+          priority?: string;
+          task_type?: string;
+          goal_id?: string | null;
+          milestone_id?: string | null;
+          estimated_minutes?: number | null;
+          actual_minutes?: number | null;
+          due_at?: string | null;
+          scheduled_start?: string | null;
+          scheduled_end?: string | null;
+          completed_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_tasks_user_id';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_tasks_goal_id';
+            columns: ['goal_id'];
+            referencedRelation: 'goals';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_tasks_milestone_id';
+            columns: ['milestone_id'];
+            referencedRelation: 'goal_milestones';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      task_dependencies: {
+        Row: {
+          id: string;
+          task_id: string;
+          depends_on_task_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          task_id: string;
+          depends_on_task_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          task_id?: string;
+          depends_on_task_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_task_dependencies_task_id';
+            columns: ['task_id'];
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_task_dependencies_depends_on_task_id';
+            columns: ['depends_on_task_id'];
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -228,6 +344,14 @@ export type GoalUpdate = Database['public']['Tables']['goals']['Update'];
 export type GoalMilestoneRow = Database['public']['Tables']['goal_milestones']['Row'];
 export type GoalMilestoneInsert = Database['public']['Tables']['goal_milestones']['Insert'];
 export type GoalMilestoneUpdate = Database['public']['Tables']['goal_milestones']['Update'];
+
+export type TaskRow = Database['public']['Tables']['tasks']['Row'];
+export type TaskInsert = Database['public']['Tables']['tasks']['Insert'];
+export type TaskUpdate = Database['public']['Tables']['tasks']['Update'];
+
+export type TaskDependencyRow = Database['public']['Tables']['task_dependencies']['Row'];
+export type TaskDependencyInsert = Database['public']['Tables']['task_dependencies']['Insert'];
+export type TaskDependencyUpdate = Database['public']['Tables']['task_dependencies']['Update'];
 
 // Zod Validation Schemas for Application Payloads
 export const ThemePreferenceSchema = z.enum(['system', 'light', 'dark']);

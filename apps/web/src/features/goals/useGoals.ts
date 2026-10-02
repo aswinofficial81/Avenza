@@ -168,3 +168,19 @@ export function useDeleteMilestone(goalId: string) {
     },
   });
 }
+
+export function useGoalMilestones(goalId: string | undefined) {
+  const api = useApiClient();
+
+  return useQuery({
+    queryKey: goalKeys.milestones(goalId || ''),
+    queryFn: async () => {
+      if (!goalId) return [];
+      const response = await api.get<ApiSuccessResponse<MilestoneDto[]>>(
+        `/api/v1/goals/${goalId}/milestones`
+      );
+      return response.data;
+    },
+    enabled: Boolean(goalId),
+  });
+}

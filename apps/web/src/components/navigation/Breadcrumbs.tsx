@@ -28,6 +28,7 @@ const ROUTE_LABELS: Record<string, string> = {
   career: 'Career',
   plan: 'Plan',
   goals: 'Goals',
+  tasks: 'Tasks',
   calendar: 'Calendar',
   planner: 'Planner',
   insights: 'Insights',

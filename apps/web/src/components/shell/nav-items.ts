@@ -9,6 +9,7 @@ import {
   FolderGit2,
   Compass,
   Target,
+  CheckSquare,
   Calendar,
   Clock,
   BarChart3,
@@ -59,6 +60,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: 'PLAN',
     items: [
       { id: 'goals', label: 'Goals', href: '/goals', icon: Target },
+      { id: 'tasks', label: 'Tasks', href: '/tasks', icon: CheckSquare },
       { id: 'calendar', label: 'Calendar', href: '/calendar', icon: Calendar },
       { id: 'planner', label: 'Planner', href: '/planner', icon: Clock },
     ],

@@ -5,6 +5,7 @@ import { registerErrorHandler } from './plugins/error-handler';
 import { healthRoutes } from './routes/health/health.routes';
 import { profileRoutes } from './modules/identity/profile.routes';
 import { goalsRoutes } from './modules/goals/goals.routes';
+import { tasksRoutes } from './modules/tasks/tasks.routes';
 
 export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   const app = fastify({
@@ -53,6 +54,9 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
 
   // Register goals domain routes
   app.register(goalsRoutes);
+
+  // Register tasks domain routes
+  app.register(tasksRoutes);
 
   return app;
 }

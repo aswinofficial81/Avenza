@@ -38,3 +38,6 @@ export * from './auth.types';
 
 // Goals & Milestones Types & Schemas
 export * from './goals.types';
+
+// Tasks & Task Dependencies Types & Schemas
+export * from './tasks.types';

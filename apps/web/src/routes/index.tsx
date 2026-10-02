@@ -5,6 +5,8 @@ import { SettingsPage } from './SettingsPage';
 import { DesignSystemShowcase } from './DesignSystemShowcase';
 import { GoalsPage } from './GoalsPage';
 import { GoalDetailPage } from './GoalDetailPage';
+import { TasksPage } from './TasksPage';
+import { TaskDetailPage } from './TaskDetailPage';
 import { PlaceholderPage } from './PlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -84,6 +86,8 @@ export const AppRoutes: React.FC = () => {
       />
       <Route path="/goals" element={<GoalsPage />} />
       <Route path="/goals/:id" element={<GoalDetailPage />} />
+      <Route path="/tasks" element={<TasksPage />} />
+      <Route path="/tasks/:id" element={<TaskDetailPage />} />
       <Route
         path="/calendar"
         element={
