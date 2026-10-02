@@ -6,6 +6,7 @@ import { healthRoutes } from './routes/health/health.routes';
 import { profileRoutes } from './modules/identity/profile.routes';
 import { goalsRoutes } from './modules/goals/goals.routes';
 import { tasksRoutes } from './modules/tasks/tasks.routes';
+import { todayRoutes } from './modules/today/today.routes';
 
 export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   const app = fastify({
@@ -58,5 +59,9 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   // Register tasks domain routes
   app.register(tasksRoutes);
 
+  // Register today execution routes
+  app.register(todayRoutes);
+
   return app;
 }
+

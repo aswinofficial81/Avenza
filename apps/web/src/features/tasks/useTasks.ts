@@ -78,6 +78,7 @@ export function useCreateTask() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['today'] });
     },
   });
 }
@@ -97,6 +98,7 @@ export function useUpdateTask(taskId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['today'] });
     },
   });
 }
@@ -114,6 +116,7 @@ export function useDeleteTask() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['today'] });
     },
   });
 }

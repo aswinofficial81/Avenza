@@ -41,3 +41,7 @@ export * from './goals.types';
 
 // Tasks & Task Dependencies Types & Schemas
 export * from './tasks.types';
+
+// Today Execution Types & Schemas
+export * from './today.types';
+

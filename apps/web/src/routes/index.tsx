@@ -7,6 +7,7 @@ import { GoalsPage } from './GoalsPage';
 import { GoalDetailPage } from './GoalDetailPage';
 import { TasksPage } from './TasksPage';
 import { TaskDetailPage } from './TaskDetailPage';
+import { TodayPage } from './TodayPage';
 import { PlaceholderPage } from './PlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -14,16 +15,7 @@ export const AppRoutes: React.FC = () => {
     <Routes>
       <Route path="/" element={<Navigate to="/overview" replace />} />
       <Route path="/overview" element={<OverviewPage />} />
-      <Route
-        path="/today"
-        element={
-          <PlaceholderPage
-            title="Today"
-            description="Daily command center and real-time execution workflow."
-            plannedPhase="Phase 5"
-          />
-        }
-      />
+      <Route path="/today" element={<TodayPage />} />
       <Route
         path="/academics/terms"
         element={
