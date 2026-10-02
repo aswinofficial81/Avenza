@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@avenza/config": "workspace:*",
+    "@electric-sql/pglite": "^0.5.8",
     "@types/node": "^22.13.4",
     "tsup": "^8.3.6",
     "tsx": "^4.19.3",

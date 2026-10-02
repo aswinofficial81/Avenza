@@ -29,3 +29,6 @@ export interface ApiErrorResponse {
 }
 
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
+
+// Database Types & Schemas
+export * from './database.types';
