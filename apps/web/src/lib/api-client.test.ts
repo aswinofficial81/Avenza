@@ -63,4 +63,15 @@ describe('ApiClient', () => {
 
     await expect(client.getMe()).rejects.toThrow('Token expired');
   });
+
+  it('handles network connection failures separately with helpful message', async () => {
+    const networkError = new TypeError('Failed to fetch');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(networkError));
+
+    const client = new ApiClient(async () => 'token', 'http://localhost:3005');
+
+    await expect(client.getMe()).rejects.toThrow(
+      'Cannot reach API service at http://localhost:3005. Please verify the Fastify backend server is running on port 3005.'
+    );
+  });
 });

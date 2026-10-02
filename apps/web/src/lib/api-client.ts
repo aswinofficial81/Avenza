@@ -23,19 +23,39 @@ export class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: 'GET',
-      headers,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: 'GET',
+        headers,
+      });
+    } catch (err) {
+      const error = err as Error;
+      if (
+        error.name === 'TypeError' ||
+        error.message?.toLowerCase().includes('failed to fetch') ||
+        error.message?.toLowerCase().includes('network')
+      ) {
+        throw new Error(
+          `Cannot reach API service at ${this.baseUrl}. Please verify the Fastify backend server is running on port 3005.`
+        );
+      }
+      throw error;
+    }
 
-    const data = await response.json();
+    let data: { error?: { message?: string } } | null = null;
+    try {
+      data = (await response.json()) as { error?: { message?: string } };
+    } catch {
+      data = null;
+    }
 
     if (!response.ok) {
       const message = data?.error?.message || `Request failed with status ${response.status}`;
       throw new Error(message);
     }
 
-    return data as T;
+    return data as unknown as T;
   }
 
   async getMe(token?: string): Promise<AuthMeResponse> {

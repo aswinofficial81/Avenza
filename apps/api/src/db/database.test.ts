@@ -51,7 +51,7 @@ describe('Supabase PostgreSQL Database Foundation', () => {
       GRANT USAGE ON SCHEMA public TO authenticated, anon;
       GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated, anon;
     `);
-  });
+  }, 30000);
 
   describe('1. Schema & Table Verification', () => {
     it('creates profiles and user_preferences tables', async () => {

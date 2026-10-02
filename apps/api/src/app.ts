@@ -15,8 +15,22 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   });
 
   // CORS configuration for local development
+  const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
+
   app.register(cors, {
-    origin: env.CORS_ORIGIN,
+    origin: (origin, cb) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+      if (!origin) return cb(null, true);
+
+      const isAllowed =
+        allowedOrigins.includes(origin) ||
+        (allowedOrigins.includes('http://localhost:3000') && origin === 'http://127.0.0.1:3000');
+
+      if (isAllowed) {
+        return cb(null, true);
+      }
+      return cb(new Error('Not allowed by CORS'), false);
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Authorization', 'Content-Type', 'x-request-id'],
     credentials: true,
