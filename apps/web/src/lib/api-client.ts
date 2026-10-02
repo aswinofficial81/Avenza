@@ -12,7 +12,12 @@ export class ApiClient {
     this.baseUrl = baseUrl || env.API_BASE_URL;
   }
 
-  async get<T>(endpoint: string, options: { token?: string } = {}): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    body?: unknown,
+    options: { token?: string } = {}
+  ): Promise<T> {
     const token = options.token || (this.getToken ? await this.getToken() : null);
 
     const headers: Record<string, string> = {
@@ -26,8 +31,9 @@ export class ApiClient {
     let response: Response;
     try {
       response = await fetch(`${this.baseUrl}${endpoint}`, {
-        method: 'GET',
+        method,
         headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
       });
     } catch (err) {
       const error = err as Error;
@@ -56,6 +62,22 @@ export class ApiClient {
     }
 
     return data as unknown as T;
+  }
+
+  async get<T>(endpoint: string, options: { token?: string } = {}): Promise<T> {
+    return this.request<T>(endpoint, 'GET', undefined, options);
+  }
+
+  async post<T>(endpoint: string, body?: unknown, options: { token?: string } = {}): Promise<T> {
+    return this.request<T>(endpoint, 'POST', body, options);
+  }
+
+  async patch<T>(endpoint: string, body?: unknown, options: { token?: string } = {}): Promise<T> {
+    return this.request<T>(endpoint, 'PATCH', body, options);
+  }
+
+  async delete<T>(endpoint: string, options: { token?: string } = {}): Promise<T> {
+    return this.request<T>(endpoint, 'DELETE', undefined, options);
   }
 
   async getMe(token?: string): Promise<AuthMeResponse> {

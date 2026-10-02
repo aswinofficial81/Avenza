@@ -86,6 +86,119 @@ export interface Database {
           },
         ];
       };
+      goals: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          description: string | null;
+          goal_type: string;
+          status: string;
+          priority: string;
+          start_date: string | null;
+          target_date: string | null;
+          completed_at: string | null;
+          desired_outcome: string | null;
+          completion_criteria: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          description?: string | null;
+          goal_type: string;
+          status?: string;
+          priority?: string;
+          start_date?: string | null;
+          target_date?: string | null;
+          completed_at?: string | null;
+          desired_outcome?: string | null;
+          completion_criteria?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          description?: string | null;
+          goal_type?: string;
+          status?: string;
+          priority?: string;
+          start_date?: string | null;
+          target_date?: string | null;
+          completed_at?: string | null;
+          desired_outcome?: string | null;
+          completion_criteria?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_goals_user_id';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      goal_milestones: {
+        Row: {
+          id: string;
+          goal_id: string;
+          title: string;
+          description: string | null;
+          status: string;
+          priority: string;
+          order_index: number;
+          start_date: string | null;
+          target_date: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          goal_id: string;
+          title: string;
+          description?: string | null;
+          status?: string;
+          priority?: string;
+          order_index?: number;
+          start_date?: string | null;
+          target_date?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          goal_id?: string;
+          title?: string;
+          description?: string | null;
+          status?: string;
+          priority?: string;
+          order_index?: number;
+          start_date?: string | null;
+          target_date?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_goal_milestones_goal_id';
+            columns: ['goal_id'];
+            referencedRelation: 'goals';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -107,6 +220,14 @@ export type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 export type UserPreferencesRow = Database['public']['Tables']['user_preferences']['Row'];
 export type UserPreferencesInsert = Database['public']['Tables']['user_preferences']['Insert'];
 export type UserPreferencesUpdate = Database['public']['Tables']['user_preferences']['Update'];
+
+export type GoalRow = Database['public']['Tables']['goals']['Row'];
+export type GoalInsert = Database['public']['Tables']['goals']['Insert'];
+export type GoalUpdate = Database['public']['Tables']['goals']['Update'];
+
+export type GoalMilestoneRow = Database['public']['Tables']['goal_milestones']['Row'];
+export type GoalMilestoneInsert = Database['public']['Tables']['goal_milestones']['Insert'];
+export type GoalMilestoneUpdate = Database['public']['Tables']['goal_milestones']['Update'];
 
 // Zod Validation Schemas for Application Payloads
 export const ThemePreferenceSchema = z.enum(['system', 'light', 'dark']);

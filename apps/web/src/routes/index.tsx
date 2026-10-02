@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { OverviewPage } from './OverviewPage';
 import { SettingsPage } from './SettingsPage';
 import { DesignSystemShowcase } from './DesignSystemShowcase';
+import { GoalsPage } from './GoalsPage';
+import { GoalDetailPage } from './GoalDetailPage';
 import { PlaceholderPage } from './PlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -80,16 +82,8 @@ export const AppRoutes: React.FC = () => {
           />
         }
       />
-      <Route
-        path="/goals"
-        element={
-          <PlaceholderPage
-            title="Goals"
-            description="Hierarchical multi-horizon goal planning (Quarterly, Monthly, Weekly)."
-            plannedPhase="Goals Phase"
-          />
-        }
-      />
+      <Route path="/goals" element={<GoalsPage />} />
+      <Route path="/goals/:id" element={<GoalDetailPage />} />
       <Route
         path="/calendar"
         element={

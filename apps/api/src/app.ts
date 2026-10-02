@@ -4,6 +4,7 @@ import { env } from './config/env';
 import { registerErrorHandler } from './plugins/error-handler';
 import { healthRoutes } from './routes/health/health.routes';
 import { profileRoutes } from './modules/identity/profile.routes';
+import { goalsRoutes } from './modules/goals/goals.routes';
 
 export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   const app = fastify({
@@ -49,6 +50,9 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
 
   // Register identity & authentication routes
   app.register(profileRoutes);
+
+  // Register goals domain routes
+  app.register(goalsRoutes);
 
   return app;
 }

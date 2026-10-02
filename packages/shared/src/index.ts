@@ -35,3 +35,6 @@ export * from './database.types';
 
 // Auth Types
 export * from './auth.types';
+
+// Goals & Milestones Types & Schemas
+export * from './goals.types';
