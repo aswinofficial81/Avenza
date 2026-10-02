@@ -1,0 +1,33 @@
+{
+  "name": "@avenza/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared types and utilities for Avenza",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@avenza/config": "workspace:*",
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7",
+    "zod": "^3.24.2"
+  },
+  "peerDependencies": {
+    "zod": "^3.24.2"
+  }
+}
