@@ -59,6 +59,8 @@ export interface GoalDto {
   completed_at: string | null;
   desired_outcome: string | null;
   completion_criteria: string | null;
+  academic_term_id?: string | null;
+  academic_subject_id?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -105,6 +107,8 @@ export const CreateGoalSchema = z
     target_date: z.string().datetime({ offset: true }).nullable().optional(),
     desired_outcome: z.string().max(2000, 'Desired outcome must be 2000 characters or fewer').nullable().optional(),
     completion_criteria: z.string().max(2000, 'Completion criteria must be 2000 characters or fewer').nullable().optional(),
+    academic_term_id: z.string().uuid('Invalid Term ID format').nullable().optional(),
+    academic_subject_id: z.string().uuid('Invalid Subject ID format').nullable().optional(),
     notes: z.string().max(5000, 'Notes must be 5000 characters or fewer').nullable().optional(),
   })
   .refine(dateComparisonRefine, {
@@ -126,6 +130,8 @@ export const UpdateGoalSchema = z
     completed_at: z.string().datetime({ offset: true }).nullable().optional(),
     desired_outcome: z.string().max(2000).nullable().optional(),
     completion_criteria: z.string().max(2000).nullable().optional(),
+    academic_term_id: z.string().uuid('Invalid Term ID format').nullable().optional(),
+    academic_subject_id: z.string().uuid('Invalid Subject ID format').nullable().optional(),
     notes: z.string().max(5000).nullable().optional(),
   })
   .refine(dateComparisonRefine, {

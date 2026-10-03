@@ -7,6 +7,7 @@ import { Textarea } from '../../../components/ui/Textarea';
 import { Label } from '../../../components/ui/Label';
 import { useCreateTask } from '../useTasks';
 import { useGoals, useGoalMilestones } from '../../goals/useGoals';
+import { useSubjects, useTopics } from '../../academics/useAcademics';
 import {
   TASK_TYPES,
   TASK_PRIORITIES,
@@ -38,6 +39,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [status, setStatus] = useState<TaskStatus>('inbox');
   const [goalId, setGoalId] = useState(initialGoalId);
   const [milestoneId, setMilestoneId] = useState(initialMilestoneId);
+  const [academicSubjectId, setAcademicSubjectId] = useState('');
+  const [academicTopicId, setAcademicTopicId] = useState('');
   const [estimatedMinutes, setEstimatedMinutes] = useState<string>('');
   const [dueAt, setDueAt] = useState('');
   const [scheduledStart, setScheduledStart] = useState('');
@@ -56,9 +59,18 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     goalId || undefined
   );
 
+  // Fetch academic subjects and topics
+  const { data: subjects = [] } = useSubjects();
+  const { data: topics = [] } = useTopics(academicSubjectId || undefined);
+
   const handleGoalChange = (newGoalId: string) => {
     setGoalId(newGoalId);
     setMilestoneId(''); // Clear milestone when goal changes
+  };
+
+  const handleSubjectChange = (newSubjectId: string) => {
+    setAcademicSubjectId(newSubjectId);
+    setAcademicTopicId('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -95,6 +107,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         status,
         goal_id: goalId || undefined,
         milestone_id: milestoneId || undefined,
+        academic_subject_id: academicSubjectId || undefined,
+        academic_topic_id: academicTopicId || undefined,
         estimated_minutes: parsedEstimate,
         due_at: dueAt ? new Date(dueAt).toISOString() : undefined,
         scheduled_start: scheduledStart ? new Date(scheduledStart).toISOString() : undefined,
@@ -119,6 +133,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     setStatus('inbox');
     setGoalId(initialGoalId);
     setMilestoneId(initialMilestoneId);
+    setAcademicSubjectId('');
+    setAcademicTopicId('');
     setEstimatedMinutes('');
     setDueAt('');
     setScheduledStart('');
@@ -270,6 +286,50 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </Select>
           </div>
         </div>
+
+        {/* Academic Subject & Topic (Phase 11) */}
+        {subjects.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div>
+              <Label htmlFor="task-academic-subject">Academic Subject (Optional)</Label>
+              <Select
+                id="task-academic-subject"
+                value={academicSubjectId}
+                onChange={(e) => handleSubjectChange(e.target.value)}
+              >
+                <option value="">None (Non-academic task)</option>
+                {subjects.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} {s.code ? `(${s.code})` : ''}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="task-academic-topic">Syllabus Topic (Optional)</Label>
+              <Select
+                id="task-academic-topic"
+                value={academicTopicId}
+                onChange={(e) => setAcademicTopicId(e.target.value)}
+                disabled={!academicSubjectId}
+              >
+                <option value="">
+                  {!academicSubjectId
+                    ? 'Select a subject first'
+                    : topics.length === 0
+                    ? 'No topics defined for subject'
+                    : 'None (Subject-level)'}
+                </option>
+                {topics.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    #{t.order_index} {t.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        )}
 
         {/* Estimated Duration & Due Date */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

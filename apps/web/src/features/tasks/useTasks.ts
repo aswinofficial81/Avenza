@@ -79,6 +79,7 @@ export function useCreateTask() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['today'] });
+      queryClient.invalidateQueries({ queryKey: ['intelligence'] });
     },
   });
 }
@@ -99,6 +100,7 @@ export function useUpdateTask(taskId: string) {
       queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['today'] });
+      queryClient.invalidateQueries({ queryKey: ['intelligence'] });
     },
   });
 }
@@ -117,6 +119,7 @@ export function useDeleteTask() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['today'] });
+      queryClient.invalidateQueries({ queryKey: ['intelligence'] });
     },
   });
 }
@@ -153,6 +156,8 @@ export function useCreateTaskDependency(taskId: string) {
       queryClient.invalidateQueries({ queryKey: taskKeys.dependencies(taskId) });
       queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['today'] });
+      queryClient.invalidateQueries({ queryKey: ['intelligence'] });
     },
   });
 }
@@ -172,6 +177,8 @@ export function useDeleteTaskDependency(taskId: string) {
       queryClient.invalidateQueries({ queryKey: taskKeys.dependencies(taskId) });
       queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['today'] });
+      queryClient.invalidateQueries({ queryKey: ['intelligence'] });
     },
   });
 }

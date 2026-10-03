@@ -48,3 +48,15 @@ export * from './today.types';
 // Focus Sessions Types & Schemas
 export * from './focus.types';
 
+// Evidence Domain Types & Schemas
+export * from './evidence.types';
+
+// Intelligence Domain Types & Schemas
+export * from './intelligence.types';
+
+// Academics Domain Types & Schemas
+export * from './academics.types';
+
+// Skills & Mastery Domain Types & Schemas
+export * from './skills.types';
+

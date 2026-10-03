@@ -70,6 +70,11 @@ export interface TaskDto {
   milestone_id: string | null;
   goal_title?: string | null;
   milestone_title?: string | null;
+  academic_term_id?: string | null;
+  academic_subject_id?: string | null;
+  academic_topic_id?: string | null;
+  subject_name?: string | null;
+  topic_name?: string | null;
   estimated_minutes: number | null;
   actual_minutes: number | null;
   due_at: string | null;
@@ -112,6 +117,9 @@ export const CreateTaskSchema = z
     task_type: TaskTypeSchema.default('study'),
     goal_id: z.string().uuid('Invalid Goal ID format').nullable().optional(),
     milestone_id: z.string().uuid('Invalid Milestone ID format').nullable().optional(),
+    academic_term_id: z.string().uuid('Invalid Term ID format').nullable().optional(),
+    academic_subject_id: z.string().uuid('Invalid Subject ID format').nullable().optional(),
+    academic_topic_id: z.string().uuid('Invalid Topic ID format').nullable().optional(),
     estimated_minutes: z.number().int().positive('Estimated minutes must be positive').nullable().optional(),
     actual_minutes: z.number().int().min(0, 'Actual minutes must be non-negative').nullable().optional(),
     due_at: z.string().datetime({ offset: true }).nullable().optional(),
@@ -135,6 +143,9 @@ export const UpdateTaskSchema = z
     task_type: TaskTypeSchema.optional(),
     goal_id: z.string().uuid('Invalid Goal ID format').nullable().optional(),
     milestone_id: z.string().uuid('Invalid Milestone ID format').nullable().optional(),
+    academic_term_id: z.string().uuid('Invalid Term ID format').nullable().optional(),
+    academic_subject_id: z.string().uuid('Invalid Subject ID format').nullable().optional(),
+    academic_topic_id: z.string().uuid('Invalid Topic ID format').nullable().optional(),
     estimated_minutes: z.number().int().positive('Estimated minutes must be positive').nullable().optional(),
     actual_minutes: z.number().int().min(0, 'Actual minutes must be non-negative').nullable().optional(),
     due_at: z.string().datetime({ offset: true }).nullable().optional(),

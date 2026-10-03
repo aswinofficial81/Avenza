@@ -10,6 +10,15 @@ import { TaskDetailPage } from './TaskDetailPage';
 import { TodayPage } from './TodayPage';
 import { FocusPage } from './FocusPage';
 import { FocusHistoryPage } from './FocusHistoryPage';
+import { EvidencePage } from './EvidencePage';
+import { TermsPage } from './TermsPage';
+import { SubjectsPage } from './SubjectsPage';
+import { SubjectDetailPage } from './SubjectDetailPage';
+import { AssessmentsPage } from './AssessmentsPage';
+import { ExamsPage } from './ExamsPage';
+import { AcademicsOverviewPage } from './AcademicsOverviewPage';
+import { SkillsPage } from './SkillsPage';
+import { SkillDetailPage } from './SkillDetailPage';
 import { PlaceholderPage } from './PlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -20,36 +29,16 @@ export const AppRoutes: React.FC = () => {
       <Route path="/today" element={<TodayPage />} />
       <Route path="/focus" element={<FocusPage />} />
       <Route path="/focus/history" element={<FocusHistoryPage />} />
-      <Route
-        path="/academics/terms"
-        element={
-          <PlaceholderPage
-            title="Academic Terms"
-            description="Semester, term schedules, and academic milestone tracking."
-            plannedPhase="Academics Phase"
-          />
-        }
-      />
-      <Route
-        path="/academics/subjects"
-        element={
-          <PlaceholderPage
-            title="Subjects & Courses"
-            description="Course syllabi, lecture tracking, and topic mastery."
-            plannedPhase="Academics Phase"
-          />
-        }
-      />
-      <Route
-        path="/academics/exams"
-        element={
-          <PlaceholderPage
-            title="Exams & Assessments"
-            description="Exam countdowns, syllabus preparation, and grading targets."
-            plannedPhase="Academics Phase"
-          />
-        }
-      />
+      <Route path="/evidence" element={<EvidencePage />} />
+      <Route path="/academics" element={<AcademicsOverviewPage />} />
+      <Route path="/academics/overview" element={<AcademicsOverviewPage />} />
+      <Route path="/academics/terms" element={<TermsPage />} />
+      <Route path="/academics/subjects" element={<SubjectsPage />} />
+      <Route path="/academics/subjects/:id" element={<SubjectDetailPage />} />
+      <Route path="/academics/assessments" element={<AssessmentsPage />} />
+      <Route path="/academics/exams" element={<ExamsPage />} />
+      <Route path="/skills" element={<SkillsPage />} />
+      <Route path="/skills/:id" element={<SkillDetailPage />} />
       <Route
         path="/dsa"
         element={

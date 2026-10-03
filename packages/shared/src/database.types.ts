@@ -373,6 +373,554 @@ export interface Database {
           },
         ];
       };
+      evidence: {
+        Row: {
+          id: string;
+          user_id: string;
+          evidence_type: string;
+          title: string;
+          description: string | null;
+          source_type: string;
+          source_id: string | null;
+          source_reference: string | null;
+          external_url: string | null;
+          occurred_at: string;
+          recorded_at: string;
+          verification_status: string;
+          evidence_strength: string;
+          reliability: string;
+          directness: string;
+          notes: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          evidence_type: string;
+          title: string;
+          description?: string | null;
+          source_type: string;
+          source_id?: string | null;
+          source_reference?: string | null;
+          external_url?: string | null;
+          occurred_at?: string;
+          recorded_at?: string;
+          verification_status?: string;
+          evidence_strength?: string;
+          reliability?: string;
+          directness?: string;
+          notes?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          evidence_type?: string;
+          title?: string;
+          description?: string | null;
+          source_type?: string;
+          source_id?: string | null;
+          source_reference?: string | null;
+          external_url?: string | null;
+          occurred_at?: string;
+          recorded_at?: string;
+          verification_status?: string;
+          evidence_strength?: string;
+          reliability?: string;
+          directness?: string;
+          notes?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_evidence_user_id';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      evidence_links: {
+        Row: {
+          id: string;
+          evidence_id: string;
+          entity_type: string;
+          entity_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          evidence_id: string;
+          entity_type: string;
+          entity_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          evidence_id?: string;
+          entity_type?: string;
+          entity_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_evidence_links_evidence_id';
+            columns: ['evidence_id'];
+            referencedRelation: 'evidence';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      academic_years: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          start_date: string;
+          end_date: string;
+          is_current: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          start_date: string;
+          end_date: string;
+          is_current?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          start_date?: string;
+          end_date?: string;
+          is_current?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      terms: {
+        Row: {
+          id: string;
+          user_id: string;
+          academic_year_id: string | null;
+          name: string;
+          code: string | null;
+          start_date: string;
+          end_date: string;
+          status: string;
+          is_current: boolean;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          academic_year_id?: string | null;
+          name: string;
+          code?: string | null;
+          start_date: string;
+          end_date: string;
+          status?: string;
+          is_current?: boolean;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          academic_year_id?: string | null;
+          name?: string;
+          code?: string | null;
+          start_date?: string;
+          end_date?: string;
+          status?: string;
+          is_current?: boolean;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      subjects: {
+        Row: {
+          id: string;
+          user_id: string;
+          term_id: string;
+          name: string;
+          code: string | null;
+          description: string | null;
+          instructor: string | null;
+          credits: number | null;
+          color: string | null;
+          status: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          term_id: string;
+          name: string;
+          code?: string | null;
+          description?: string | null;
+          instructor?: string | null;
+          credits?: number | null;
+          color?: string | null;
+          status?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          term_id?: string;
+          name?: string;
+          code?: string | null;
+          description?: string | null;
+          instructor?: string | null;
+          credits?: number | null;
+          color?: string | null;
+          status?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      subject_topics: {
+        Row: {
+          id: string;
+          user_id: string;
+          subject_id: string;
+          name: string;
+          description: string | null;
+          order_index: number;
+          status: string;
+          importance: string;
+          estimated_minutes: number | null;
+          resources: Json;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          subject_id: string;
+          name: string;
+          description?: string | null;
+          order_index?: number;
+          status?: string;
+          importance?: string;
+          estimated_minutes?: number | null;
+          resources?: Json;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          subject_id?: string;
+          name?: string;
+          description?: string | null;
+          order_index?: number;
+          status?: string;
+          importance?: string;
+          estimated_minutes?: number | null;
+          resources?: Json;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      assessments: {
+        Row: {
+          id: string;
+          user_id: string;
+          term_id: string;
+          subject_id: string | null;
+          title: string;
+          assessment_type: string;
+          description: string | null;
+          due_at: string | null;
+          max_marks: number | null;
+          obtained_marks: number | null;
+          weight_percent: number | null;
+          status: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          term_id: string;
+          subject_id?: string | null;
+          title: string;
+          assessment_type?: string;
+          description?: string | null;
+          due_at?: string | null;
+          max_marks?: number | null;
+          obtained_marks?: number | null;
+          weight_percent?: number | null;
+          status?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          term_id?: string;
+          subject_id?: string | null;
+          title?: string;
+          assessment_type?: string;
+          description?: string | null;
+          due_at?: string | null;
+          max_marks?: number | null;
+          obtained_marks?: number | null;
+          weight_percent?: number | null;
+          status?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      assessment_topics: {
+        Row: {
+          assessment_id: string;
+          topic_id: string;
+          created_at: string;
+        };
+        Insert: {
+          assessment_id: string;
+          topic_id: string;
+          created_at?: string;
+        };
+        Update: {
+          assessment_id?: string;
+          topic_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      exams: {
+        Row: {
+          id: string;
+          user_id: string;
+          term_id: string;
+          subject_id: string | null;
+          title: string;
+          exam_type: string;
+          exam_date: string;
+          duration_minutes: number | null;
+          location: string | null;
+          weight_percent: number | null;
+          status: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          term_id: string;
+          subject_id?: string | null;
+          title: string;
+          exam_type?: string;
+          exam_date: string;
+          duration_minutes?: number | null;
+          location?: string | null;
+          weight_percent?: number | null;
+          status?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          term_id?: string;
+          subject_id?: string | null;
+          title?: string;
+          exam_type?: string;
+          exam_date?: string;
+          duration_minutes?: number | null;
+          location?: string | null;
+          weight_percent?: number | null;
+          status?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      exam_topics: {
+        Row: {
+          exam_id: string;
+          topic_id: string;
+          created_at: string;
+        };
+        Insert: {
+          exam_id: string;
+          topic_id: string;
+          created_at?: string;
+        };
+        Update: {
+          exam_id?: string;
+          topic_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      skills: {
+        Row: {
+          id: string;
+          user_id: string;
+          parent_skill_id: string | null;
+          name: string;
+          slug: string;
+          description: string | null;
+          category: string | null;
+          status: string;
+          source: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          parent_skill_id?: string | null;
+          name: string;
+          slug: string;
+          description?: string | null;
+          category?: string | null;
+          status?: string;
+          source?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          parent_skill_id?: string | null;
+          name?: string;
+          slug?: string;
+          description?: string | null;
+          category?: string | null;
+          status?: string;
+          source?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      evidence_skills: {
+        Row: {
+          evidence_id: string;
+          skill_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          evidence_id: string;
+          skill_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          evidence_id?: string;
+          skill_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      goal_skills: {
+        Row: {
+          goal_id: string;
+          skill_id: string;
+          user_id: string;
+          target_mastery_state: string | null;
+          created_at: string;
+        };
+        Insert: {
+          goal_id: string;
+          skill_id: string;
+          user_id: string;
+          target_mastery_state?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          goal_id?: string;
+          skill_id?: string;
+          user_id?: string;
+          target_mastery_state?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      task_skills: {
+        Row: {
+          task_id: string;
+          skill_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          task_id: string;
+          skill_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          task_id?: string;
+          skill_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      topic_skills: {
+        Row: {
+          topic_id: string;
+          skill_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          topic_id: string;
+          skill_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          topic_id?: string;
+          skill_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -410,6 +958,50 @@ export type TaskUpdate = Database['public']['Tables']['tasks']['Update'];
 export type TaskDependencyRow = Database['public']['Tables']['task_dependencies']['Row'];
 export type TaskDependencyInsert = Database['public']['Tables']['task_dependencies']['Insert'];
 export type TaskDependencyUpdate = Database['public']['Tables']['task_dependencies']['Update'];
+
+export type AcademicYearRow = Database['public']['Tables']['academic_years']['Row'];
+export type AcademicYearInsert = Database['public']['Tables']['academic_years']['Insert'];
+export type AcademicYearUpdate = Database['public']['Tables']['academic_years']['Update'];
+
+export type TermRow = Database['public']['Tables']['terms']['Row'];
+export type TermInsert = Database['public']['Tables']['terms']['Insert'];
+export type TermUpdate = Database['public']['Tables']['terms']['Update'];
+
+export type SubjectRow = Database['public']['Tables']['subjects']['Row'];
+export type SubjectInsert = Database['public']['Tables']['subjects']['Insert'];
+export type SubjectUpdate = Database['public']['Tables']['subjects']['Update'];
+
+export type SubjectTopicRow = Database['public']['Tables']['subject_topics']['Row'];
+export type SubjectTopicInsert = Database['public']['Tables']['subject_topics']['Insert'];
+export type SubjectTopicUpdate = Database['public']['Tables']['subject_topics']['Update'];
+
+export type AssessmentRow = Database['public']['Tables']['assessments']['Row'];
+export type AssessmentInsert = Database['public']['Tables']['assessments']['Insert'];
+export type AssessmentUpdate = Database['public']['Tables']['assessments']['Update'];
+
+export type ExamRow = Database['public']['Tables']['exams']['Row'];
+export type ExamInsert = Database['public']['Tables']['exams']['Insert'];
+export type ExamUpdate = Database['public']['Tables']['exams']['Update'];
+
+export type SkillRow = Database['public']['Tables']['skills']['Row'];
+export type SkillInsert = Database['public']['Tables']['skills']['Insert'];
+export type SkillUpdate = Database['public']['Tables']['skills']['Update'];
+
+export type EvidenceSkillRow = Database['public']['Tables']['evidence_skills']['Row'];
+export type EvidenceSkillInsert = Database['public']['Tables']['evidence_skills']['Insert'];
+export type EvidenceSkillUpdate = Database['public']['Tables']['evidence_skills']['Update'];
+
+export type GoalSkillRow = Database['public']['Tables']['goal_skills']['Row'];
+export type GoalSkillInsert = Database['public']['Tables']['goal_skills']['Insert'];
+export type GoalSkillUpdate = Database['public']['Tables']['goal_skills']['Update'];
+
+export type TaskSkillRow = Database['public']['Tables']['task_skills']['Row'];
+export type TaskSkillInsert = Database['public']['Tables']['task_skills']['Insert'];
+export type TaskSkillUpdate = Database['public']['Tables']['task_skills']['Update'];
+
+export type TopicSkillRow = Database['public']['Tables']['topic_skills']['Row'];
+export type TopicSkillInsert = Database['public']['Tables']['topic_skills']['Insert'];
+export type TopicSkillUpdate = Database['public']['Tables']['topic_skills']['Update'];
 
 // Zod Validation Schemas for Application Payloads
 export const ThemePreferenceSchema = z.enum(['system', 'light', 'dark']);

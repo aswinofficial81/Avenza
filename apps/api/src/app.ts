@@ -8,6 +8,10 @@ import { goalsRoutes } from './modules/goals/goals.routes';
 import { tasksRoutes } from './modules/tasks/tasks.routes';
 import { todayRoutes } from './modules/today/today.routes';
 import { focusRoutes } from './modules/focus/focus.routes';
+import { evidenceRoutes } from './modules/evidence/evidence.routes';
+import { intelligenceRoutes } from './modules/intelligence/intelligence.routes';
+import { academicsRoutes } from './modules/academics/academics.routes';
+import { skillsRoutes } from './modules/skills/skills.routes';
 
 export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   const app = fastify({
@@ -65,6 +69,18 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
 
   // Register focus session routes
   app.register(focusRoutes);
+
+  // Register evidence domain routes
+  app.register(evidenceRoutes);
+
+  // Register intelligence next-action routes
+  app.register(intelligenceRoutes);
+
+  // Register academics domain routes
+  app.register(academicsRoutes);
+
+  // Register skills domain routes
+  app.register(skillsRoutes);
 
   return app;
 }

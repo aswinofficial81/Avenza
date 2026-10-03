@@ -18,6 +18,8 @@ import {
   Settings,
   Command,
   Flame,
+  ShieldCheck,
+  Award,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -40,6 +42,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { id: 'overview', label: 'Overview', href: '/overview', icon: LayoutDashboard },
       { id: 'today', label: 'Today', href: '/today', icon: CalendarCheck },
       { id: 'focus', label: 'Focus', href: '/focus', icon: Flame },
+      { id: 'evidence', label: 'Evidence', href: '/evidence', icon: ShieldCheck },
     ],
   },
   {
@@ -47,6 +50,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: 'terms', label: 'Terms', href: '/academics/terms', icon: GraduationCap },
       { id: 'subjects', label: 'Subjects', href: '/academics/subjects', icon: BookOpen },
+      { id: 'assessments', label: 'Assessments', href: '/academics/assessments', icon: FileText },
       { id: 'exams', label: 'Exams', href: '/academics/exams', icon: FileText },
       { id: 'dsa', label: 'DSA', href: '/dsa', icon: Binary },
     ],
@@ -54,6 +58,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'BUILD',
     items: [
+      { id: 'skills', label: 'Skills', href: '/skills', icon: Award },
       { id: 'projects', label: 'Projects', href: '/projects', icon: FolderGit2 },
       { id: 'career', label: 'Career', href: '/career', icon: Compass },
     ],

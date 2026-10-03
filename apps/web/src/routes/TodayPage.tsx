@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToday } from '../features/today/useToday';
+import { useNextAction } from '../features/intelligence/useNextAction';
 import { TodayHeader } from '../features/today/components/TodayHeader';
 import { TodayProgress } from '../features/today/components/TodayProgress';
-import { NextTaskCard } from '../features/today/components/NextTaskCard';
+import { NextBestActionCard } from '../features/intelligence/components/NextBestActionCard';
 import { TodaySection } from '../features/today/components/TodaySection';
 import { CreateTaskModal } from '../features/tasks/components/CreateTaskModal';
 import { useActiveFocusSession } from '../features/focus/useFocusSession';
@@ -29,6 +30,13 @@ export const TodayPage: React.FC = () => {
   const dateParam = searchParams.get('date') || undefined;
 
   const { data, isLoading, isError, error, refetch } = useToday(dateParam);
+  const {
+    data: nextActionData,
+    isLoading: isNextActionLoading,
+    isError: isNextActionError,
+    error: nextActionError,
+    refetch: refetchNextAction,
+  } = useNextAction(dateParam);
   const { data: activeFocusSession } = useActiveFocusSession();
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -48,6 +56,7 @@ export const TodayPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['today'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['intelligence'] });
     },
     onSettled: () => {
       setActiveTaskId(null);
@@ -191,15 +200,27 @@ export const TodayPage: React.FC = () => {
             </div>
           )}
 
-          {/* Next Up Card */}
-          {next && !isAllDone && (
-            <NextTaskCard
-              task={next}
+          {/* Next Best Action Card (Phase 10 Intelligence Engine) */}
+          {!isAllDone && (
+            <NextBestActionCard
+              data={nextActionData}
+              fallbackTask={next}
+              isLoading={isNextActionLoading}
+              isError={isNextActionError}
+              error={nextActionError as Error}
+              onRetry={refetchNextAction}
+              onStartFocus={(task) => {
+                setFocusTargetTask({ id: task.id, title: task.title });
+                setIsFocusModalOpen(true);
+              }}
               onComplete={handleComplete}
               onDefer={handleDefer}
-              onStartFocus={handleStartFocus}
+              onCreateTask={() => setIsCreateModalOpen(true)}
               activeFocusTaskId={activeFocusTaskId}
-              isCompleting={statusMutation.isPending && activeTaskId === next.id}
+              isCompleting={
+                statusMutation.isPending &&
+                (activeTaskId === nextActionData?.action?.taskId || activeTaskId === next?.id)
+              }
             />
           )}
 
