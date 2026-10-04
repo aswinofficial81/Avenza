@@ -19,6 +19,13 @@ import { ExamsPage } from './ExamsPage';
 import { AcademicsOverviewPage } from './AcademicsOverviewPage';
 import { SkillsPage } from './SkillsPage';
 import { SkillDetailPage } from './SkillDetailPage';
+import { DsaPage } from './DsaPage';
+import { DsaAttemptForm } from '../features/dsa/components/DsaAttemptForm';
+import { DsaTopicsPage } from '../features/dsa/pages/DsaTopicsPage';
+import { DsaTopicForm } from '../features/dsa/components/DsaTopicForm';
+import { DsaProblemsPage } from '../features/dsa/pages/DsaProblemsPage';
+import { DsaProblemForm } from '../features/dsa/components/DsaProblemForm';
+import { DsaProblemDetailPage } from '../features/dsa/pages/DsaProblemDetailPage';
 import { PlaceholderPage } from './PlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -39,16 +46,15 @@ export const AppRoutes: React.FC = () => {
       <Route path="/academics/exams" element={<ExamsPage />} />
       <Route path="/skills" element={<SkillsPage />} />
       <Route path="/skills/:id" element={<SkillDetailPage />} />
-      <Route
-        path="/dsa"
-        element={
-          <PlaceholderPage
-            title="Data Structures & Algorithms"
-            description="Algorithmic problem tracking, pattern mastery, and revision intervals."
-            plannedPhase="DSA Phase"
-          />
-        }
-      />
+      <Route path="/dsa" element={<DsaPage />} />
+      <Route path="/dsa/problems" element={<DsaProblemsPage />} />
+      <Route path="/dsa/problems/create" element={<DsaProblemForm />} />
+      <Route path="/dsa/problems/:problemId" element={<DsaProblemDetailPage />} />
+      <Route path="/dsa/problems/:problemId/edit" element={<DsaProblemForm />} />
+      <Route path="/dsa/problems/:problemId/attempt" element={<DsaAttemptForm />} />
+      <Route path="/dsa/topics" element={<DsaTopicsPage />} />
+      <Route path="/dsa/topics/create" element={<DsaTopicForm />} />
+      <Route path="/dsa/topics/:topicId" element={<DsaTopicForm />} />
       <Route
         path="/projects"
         element={

@@ -920,7 +920,351 @@ export interface Database {
           created_at?: string;
         };
         Relationships: [];
-      };
+      },
+      // DSA Tables
+      dsa_problems: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          slug: string;
+          description: string | null;
+          difficulty: string;
+          source: string;
+          status: string;
+          external_url: string | null;
+          estimated_minutes: number | null;
+          attempt_count: number;
+          solved_count: number;
+          failed_count: number;
+          last_attempt_at: string | null;
+          last_solved_at: string | null;
+          next_review_at: string | null;
+          revision_count: number;
+          review_stage: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          slug: string;
+          description?: string | null;
+          difficulty: string;
+          source?: string;
+          status?: string;
+          external_url?: string | null;
+          estimated_minutes?: number | null;
+          attempt_count?: number;
+          solved_count?: number;
+          failed_count?: number;
+          last_attempt_at?: string | null;
+          last_solved_at?: string | null;
+          next_review_at?: string | null;
+          revision_count?: number;
+          review_stage?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          slug?: string;
+          description?: string | null;
+          difficulty?: string;
+          source?: string;
+          status?: string;
+          external_url?: string | null;
+          estimated_minutes?: number | null;
+          attempt_count?: number;
+          solved_count?: number;
+          failed_count?: number;
+          last_attempt_at?: string | null;
+          last_solved_at?: string | null;
+          next_review_at?: string | null;
+          revision_count?: number;
+          review_stage?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_dsa_problems_user_id';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ],
+      },
+      dsa_topics: {
+        Row: {
+          id: string;
+          user_id: string;
+          parent_topic_id: string | null;
+          name: string;
+          slug: string;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          parent_topic_id?: string | null;
+          name: string;
+          slug: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          parent_topic_id?: string | null;
+          name?: string;
+          slug?: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_dsa_topics_user_id';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_dsa_topics_parent';
+            columns: ['parent_topic_id'];
+            referencedRelation: 'dsa_topics';
+            referencedColumns: ['id'];
+          }
+        ],
+      },
+      dsa_problem_topics: {
+        Row: {
+          problem_id: string;
+          topic_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          problem_id: string;
+          topic_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          problem_id?: string;
+          topic_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_dsa_problem_topics_problem';
+            columns: ['problem_id'];
+            referencedRelation: 'dsa_problems';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_dsa_problem_topics_topic';
+            columns: ['topic_id'];
+            referencedRelation: 'dsa_topics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_dsa_problem_topics_user';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ],
+      },
+      dsa_problem_skills: {
+        Row: {
+          problem_id: string;
+          skill_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          problem_id: string;
+          skill_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          problem_id?: string;
+          skill_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_dsa_problem_skills_problem';
+            columns: ['problem_id'];
+            referencedRelation: 'dsa_problems';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_dsa_problem_skills_skill';
+            columns: ['skill_id'];
+            referencedRelation: 'skills';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_dsa_problem_skills_user';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ],
+      },
+      dsa_problem_goals: {
+        Row: {
+          problem_id: string;
+          goal_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          problem_id: string;
+          goal_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          problem_id?: string;
+          goal_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_dsa_problem_goals_problem';
+            columns: ['problem_id'];
+            referencedRelation: 'dsa_problems';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_dsa_problem_goals_goal';
+            columns: ['goal_id'];
+            referencedRelation: 'goals';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_dsa_problem_goals_user';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ],
+      },
+      dsa_problem_tasks: {
+        Row: {
+          problem_id: string;
+          task_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          problem_id: string;
+          task_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          problem_id?: string;
+          task_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_dsa_problem_tasks_problem';
+            columns: ['problem_id'];
+            referencedRelation: 'dsa_problems';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_dsa_problem_tasks_task';
+            columns: ['task_id'];
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_dsa_problem_tasks_user';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ],
+      },
+      dsa_attempts: {
+        Row: {
+          id: string;
+          user_id: string;
+          problem_id: string;
+          status: string;
+          started_at: string | null;
+          submitted_at: string | null;
+          occurred_at: string;
+          recorded_at: string;
+          solve_time_minutes: number | null;
+          language: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          problem_id: string;
+          status?: string;
+          started_at?: string | null;
+          submitted_at?: string | null;
+          occurred_at?: string;
+          recorded_at?: string;
+          solve_time_minutes?: number | null;
+          language?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          problem_id?: string;
+          status?: string;
+          started_at?: string | null;
+          submitted_at?: string | null;
+          occurred_at?: string;
+          recorded_at?: string;
+          solve_time_minutes?: number | null;
+          language?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fk_dsa_attempts_user_id';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fk_dsa_attempts_problem_id';
+            columns: ['problem_id'];
+            referencedRelation: 'dsa_problems';
+            referencedColumns: ['id'];
+          }
+        ]
+      }
     };
     Views: Record<string, never>;
     Functions: {

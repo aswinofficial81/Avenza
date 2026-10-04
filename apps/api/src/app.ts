@@ -12,6 +12,7 @@ import { evidenceRoutes } from './modules/evidence/evidence.routes';
 import { intelligenceRoutes } from './modules/intelligence/intelligence.routes';
 import { academicsRoutes } from './modules/academics/academics.routes';
 import { skillsRoutes } from './modules/skills/skills.routes';
+import { dsaRoutes } from './modules/dsa/dsa.routes';
 
 export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   const app = fastify({
@@ -27,8 +28,12 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
 
   app.register(cors, {
     origin: (origin, cb) => {
+      // DEBUG: log exact origin bytes to diagnose CORS mismatch
+      app.log.warn({ corsOrigin: origin, corsOriginBytes: origin ? [...origin].map((c) => c.charCodeAt(0)) : [] }, 'CORS origin check');
+
       // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
-      if (!origin) return cb(null, true);
+      // Also allow 'null' opaque origins — Chrome sends this for localhost in some dev modes
+      if (!origin || origin === 'null') return cb(null, true);
 
       const isAllowed =
         allowedOrigins.includes(origin) ||
@@ -37,6 +42,7 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
       if (isAllowed) {
         return cb(null, true);
       }
+      app.log.error({ rejectedOrigin: origin, allowedOrigins }, 'CORS rejected origin');
       return cb(new Error('Not allowed by CORS'), false);
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -81,6 +87,9 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
 
   // Register skills domain routes
   app.register(skillsRoutes);
+
+  // Register DSA domain routes
+  app.register(dsaRoutes);
 
   return app;
 }

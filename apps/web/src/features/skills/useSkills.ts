@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApiClient } from '../../lib/api-client';
 import type {
+  ApiSuccessResponse,
   CreateSkillInput,
   EvidenceSkillDto,
   GoalSkillDto,
@@ -49,8 +50,8 @@ export function useSkills(filters: SkillQueryInput = {}) {
       const queryStr = params.toString();
       const endpoint = queryStr ? `/api/v1/skills?${queryStr}` : '/api/v1/skills';
 
-      const response = await api.get<SkillWithMasteryDto[]>(endpoint);
-      return response;
+      const response = await api.get<ApiSuccessResponse<SkillWithMasteryDto[]>>(endpoint);
+      return response.data;
     },
     staleTime: 10000,
   });
@@ -63,8 +64,10 @@ export function useSkill(id: string | undefined) {
     queryKey: skillsKeys.detail(id || ''),
     queryFn: async (): Promise<SkillWithMasteryDto> => {
       if (!id) throw new Error('Skill ID is required');
-      const response = await api.get<SkillWithMasteryDto>(`/api/v1/skills/${id}`);
-      return response;
+      const response = await api.get<ApiSuccessResponse<SkillWithMasteryDto>>(
+        `/api/v1/skills/${id}`
+      );
+      return response.data;
     },
     enabled: Boolean(id),
     staleTime: 10000,
@@ -78,8 +81,10 @@ export function useSkillDetail(id: string | undefined) {
     queryKey: [...skillsKeys.detail(id || ''), 'full'],
     queryFn: async (): Promise<SkillDetailDto> => {
       if (!id) throw new Error('Skill ID is required');
-      const response = await api.get<SkillDetailDto>(`/api/v1/skills/${id}/detail`);
-      return response;
+      const response = await api.get<ApiSuccessResponse<SkillDetailDto>>(
+        `/api/v1/skills/${id}/detail`
+      );
+      return response.data;
     },
     enabled: Boolean(id),
     staleTime: 10000,
@@ -93,8 +98,10 @@ export function useSkillMastery(id: string | undefined) {
     queryKey: skillsKeys.mastery(id || ''),
     queryFn: async (): Promise<SkillMasteryDto> => {
       if (!id) throw new Error('Skill ID is required');
-      const response = await api.get<SkillMasteryDto>(`/api/v1/skills/${id}/mastery`);
-      return response;
+      const response = await api.get<ApiSuccessResponse<SkillMasteryDto>>(
+        `/api/v1/skills/${id}/mastery`
+      );
+      return response.data;
     },
     enabled: Boolean(id),
     staleTime: 10000,
@@ -109,7 +116,8 @@ export function useCreateSkill() {
 
   return useMutation({
     mutationFn: async (input: CreateSkillInput): Promise<SkillDto> => {
-      return api.post<SkillDto>('/api/v1/skills', input);
+      const response = await api.post<ApiSuccessResponse<SkillDto>>('/api/v1/skills', input);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: skillsKeys.all });
@@ -123,7 +131,8 @@ export function useUpdateSkill() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateSkillInput }): Promise<SkillDto> => {
-      return api.patch<SkillDto>(`/api/v1/skills/${id}`, data);
+      const response = await api.patch<ApiSuccessResponse<SkillDto>>(`/api/v1/skills/${id}`, data);
+      return response.data;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.id) });
@@ -138,7 +147,11 @@ export function useArchiveSkill() {
 
   return useMutation({
     mutationFn: async (id: string): Promise<SkillDto> => {
-      return api.post<SkillDto>(`/api/v1/skills/${id}/archive`, {});
+      const response = await api.post<ApiSuccessResponse<SkillDto>>(
+        `/api/v1/skills/${id}/archive`,
+        {}
+      );
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: skillsKeys.all });
@@ -166,9 +179,11 @@ export function useLinkEvidenceToSkill() {
 
   return useMutation({
     mutationFn: async (input: LinkEvidenceToSkillInput): Promise<EvidenceSkillDto> => {
-      return api.post<EvidenceSkillDto>(`/api/v1/skills/${input.skill_id}/evidence`, {
-        evidence_id: input.evidence_id,
-      });
+      const response = await api.post<ApiSuccessResponse<EvidenceSkillDto>>(
+        `/api/v1/skills/${input.skill_id}/evidence`,
+        { evidence_id: input.evidence_id }
+      );
+      return response.data;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skill_id) });
@@ -198,10 +213,14 @@ export function useLinkGoalToSkill() {
 
   return useMutation({
     mutationFn: async (input: LinkGoalToSkillInput): Promise<GoalSkillDto> => {
-      return api.post<GoalSkillDto>(`/api/v1/skills/${input.skill_id}/goals`, {
-        goal_id: input.goal_id,
-        target_mastery_state: input.target_mastery_state,
-      });
+      const response = await api.post<ApiSuccessResponse<GoalSkillDto>>(
+        `/api/v1/skills/${input.skill_id}/goals`,
+        {
+          goal_id: input.goal_id,
+          target_mastery_state: input.target_mastery_state,
+        }
+      );
+      return response.data;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skill_id) });
@@ -229,9 +248,11 @@ export function useLinkTaskToSkill() {
 
   return useMutation({
     mutationFn: async (input: LinkTaskToSkillInput): Promise<TaskSkillDto> => {
-      return api.post<TaskSkillDto>(`/api/v1/skills/${input.skill_id}/tasks`, {
-        task_id: input.task_id,
-      });
+      const response = await api.post<ApiSuccessResponse<TaskSkillDto>>(
+        `/api/v1/skills/${input.skill_id}/tasks`,
+        { task_id: input.task_id }
+      );
+      return response.data;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skill_id) });
@@ -259,9 +280,11 @@ export function useLinkTopicToSkill() {
 
   return useMutation({
     mutationFn: async (input: LinkTopicToSkillInput): Promise<TopicSkillDto> => {
-      return api.post<TopicSkillDto>(`/api/v1/skills/${input.skill_id}/topics`, {
-        topic_id: input.topic_id,
-      });
+      const response = await api.post<ApiSuccessResponse<TopicSkillDto>>(
+        `/api/v1/skills/${input.skill_id}/topics`,
+        { topic_id: input.topic_id }
+      );
+      return response.data;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skill_id) });

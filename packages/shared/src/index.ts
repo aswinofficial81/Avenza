@@ -59,4 +59,5 @@ export * from './academics.types';
 
 // Skills & Mastery Domain Types & Schemas
 export * from './skills.types';
+export * from './dsa.types';
 
