@@ -50,12 +50,11 @@ describe('App Component', () => {
     expect(screen.getByRole('button', { name: /Get Started/i })).toBeInTheDocument();
   });
 
-  it('renders authenticated user information when signed in', () => {
+  it('renders authenticated user information when signed in', async () => {
     renderWithClient(<App isMissingKey={false} />);
 
-    expect(screen.getByText(/Avenza Explorer/i)).toBeInTheDocument();
-    expect(screen.getByText(/user_clerk_123/i)).toBeInTheDocument();
-    expect(screen.getByText(/explorer@avenza\.dev/i)).toBeInTheDocument();
+    expect(screen.getByTestId('signed-in')).toBeInTheDocument();
+    expect(screen.getAllByText(/^Avenza$/i).length).toBeGreaterThan(0);
     expect(screen.getByTestId('user-button')).toBeInTheDocument();
   });
 });

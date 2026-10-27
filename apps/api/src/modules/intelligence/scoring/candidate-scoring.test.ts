@@ -15,6 +15,7 @@ function createMockContext(overrides?: Partial<IntelligenceContext>): Intelligen
     activeMilestones: [
       { id: 'milestone-1', goalId: 'goal-1', title: 'Trees & Graphs', status: 'active', target_date: '2026-10-10' },
     ],
+    activeProjects: [],
     openTasks: [],
     recentCompletedTasks: [],
     recentFocusSessions: [],

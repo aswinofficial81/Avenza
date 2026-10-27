@@ -29,9 +29,7 @@ export class DsaController {
   constructor(private readonly dsaService: IDsaService) {}
 
   private getUserId(request: FastifyRequest): string {
-    // In a real implementation, this would come from Clerk authentication
-    // For now, we'll use a placeholder that would be replaced by auth middleware
-    const userId = request.headers['x-user-id'] as string || 'test-user-id';
+    const userId = request.auth?.profileId || request.profile?.id || (request.headers['x-user-id'] as string);
     if (!userId) {
       throw new DsaError('User not authenticated', 'UNAUTHORIZED', 401);
     }
@@ -276,20 +274,6 @@ export class DsaController {
       return reply.status(200).send({
         success: true,
         data: attempt,
-      });
-    } catch (err: unknown) {
-      this.handleError(err, reply);
-    }
-  };
-
-  deleteAttempt = async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const userId = this.getUserId(request);
-      const { attemptId } = request.params as { attemptId: string };
-      await this.dsaService.deleteAttempt(userId, attemptId);
-      return reply.status(204).send({
-        success: true,
-        data: { message: 'Attempt deleted successfully' },
       });
     } catch (err: unknown) {
       this.handleError(err, reply);

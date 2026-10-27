@@ -154,11 +154,11 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({
 
   return (
     <Card
-      className="p-5 sm:p-6 border-primary/40 bg-surface dark:bg-surface shadow-sm relative overflow-hidden transition-all"
+      className="p-5 sm:p-6 border-teal-500/30 dark:border-teal-400/20 bg-card/90 dark:bg-card/90 shadow-sm hover:shadow-glow relative overflow-hidden transition-all duration-300"
       data-testid="next-best-action-card"
     >
       {/* Indicator bar */}
-      <div className="absolute top-0 left-0 w-1.5 h-full bg-primary" />
+      <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-teal-400 to-teal-600" />
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-3 flex-1 min-w-0">
@@ -189,6 +189,26 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({
                 {effectiveAction.milestoneTitle && <span className="truncate">› {effectiveAction.milestoneTitle}</span>}
               </span>
             )}
+
+            {effectiveAction.projectTitle && (
+              <span className="text-xs text-muted-foreground truncate flex items-center gap-1 font-mono">
+                <span>•</span>
+                <span className="truncate text-foreground/90 font-medium">{effectiveAction.projectTitle}</span>
+                {effectiveAction.projectMilestoneTitle && (
+                  <span className="truncate text-muted-foreground">› {effectiveAction.projectMilestoneTitle}</span>
+                )}
+              </span>
+            )}
+
+            {effectiveAction.companyName && (
+              <span className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                <span>•</span>
+                <span className="truncate text-primary font-medium">{effectiveAction.companyName}</span>
+                {effectiveAction.careerRoundType && (
+                  <span className="truncate text-muted-foreground">({effectiveAction.careerRoundType})</span>
+                )}
+              </span>
+            )}
           </div>
 
           {/* Action Task Title */}
@@ -199,6 +219,19 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({
             >
               {effectiveAction.title}
             </Link>
+
+            {(effectiveAction.projectTitle || effectiveAction.projectMilestoneTitle) && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono mt-0.5">
+                {effectiveAction.projectTitle && (
+                  <span className="font-semibold text-foreground/80">{effectiveAction.projectTitle}</span>
+                )}
+                {effectiveAction.projectTitle && effectiveAction.projectMilestoneTitle && <span>·</span>}
+                {effectiveAction.projectMilestoneTitle && (
+                  <span>{effectiveAction.projectMilestoneTitle}</span>
+                )}
+              </div>
+            )}
+
             <p className="text-sm text-muted-foreground mt-1 line-clamp-2 max-w-2xl font-serif italic text-foreground/80">
               &ldquo;{effectiveReason.explanation}&rdquo;
             </p>

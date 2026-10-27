@@ -17,6 +17,8 @@ import type { IPreferencesRepository } from '../preferences/preferences.reposito
 import { defaultPreferencesRepository } from '../preferences/preferences.repository';
 import type { IFocusRepository } from '../focus/focus.types';
 import { defaultFocusRepository } from '../focus/focus.repository';
+import type { IProjectsRepository } from '../projects/projects.repository';
+import { defaultProjectsRepository } from '../projects/projects.repository';
 import {
   getTodayBoundaries,
   isValidTimezone,
@@ -31,7 +33,8 @@ export class TodayService implements ITodayService {
     private readonly goalsRepository: IGoalsRepository = defaultGoalsRepository,
     private readonly profileRepository: IProfileRepository = defaultProfileRepository,
     private readonly preferencesRepository: IPreferencesRepository = defaultPreferencesRepository,
-    private readonly focusRepository: IFocusRepository = defaultFocusRepository
+    private readonly focusRepository: IFocusRepository = defaultFocusRepository,
+    private readonly projectsRepository: IProjectsRepository = defaultProjectsRepository
   ) {}
 
   async getToday(userId: string, query?: TodayQueryInput): Promise<TodayResponse> {
@@ -95,6 +98,29 @@ export class TodayService implements ITodayService {
       );
     }
 
+    // Batch fetch Project & Project Milestone titles for context
+    const projectTitlesMap = new Map<string, string>();
+    const projectMilestoneTitlesMap = new Map<string, string>();
+
+    const distinctProjectIds = Array.from(
+      new Set(tasks.map((t) => t.project_id).filter((id): id is string => Boolean(id)))
+    );
+
+    if (distinctProjectIds.length > 0) {
+      await Promise.all(
+        distinctProjectIds.map(async (pId) => {
+          const proj = await this.projectsRepository.findProjectById(pId, userId);
+          if (proj) {
+            projectTitlesMap.set(proj.id, proj.title);
+          }
+          const milestones = await this.projectsRepository.findMilestonesByProjectId(pId, userId);
+          for (const m of milestones) {
+            projectMilestoneTitlesMap.set(m.id, m.title);
+          }
+        })
+      );
+    }
+
     // 5. Transform TaskRow -> TodayTaskItem with blocked status and titles
     const enrichedTasks: TodayTaskItem[] = tasks.map((task) => {
       const depSummary = dependencySummaries.get(task.id) || {
@@ -118,6 +144,10 @@ export class TodayService implements ITodayService {
         goal_title: task.goal_id ? goalTitlesMap.get(task.goal_id) || null : null,
         milestone_title: task.milestone_id
           ? milestoneTitlesMap.get(task.milestone_id) || null
+          : null,
+        project_title: task.project_id ? projectTitlesMap.get(task.project_id) || null : null,
+        project_milestone_title: task.project_milestone_id
+          ? projectMilestoneTitlesMap.get(task.project_milestone_id) || null
           : null,
         is_blocked: isBlocked,
         blocking_task_count: depSummary.uncompletedPrerequisites,

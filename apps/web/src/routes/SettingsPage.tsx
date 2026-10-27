@@ -1,14 +1,111 @@
-import React from 'react';
-import { useUser } from '@clerk/clerk-react';
+import React, { useState } from 'react';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import { useTheme } from '../lib/theme';
+import { useApiClient } from '../lib/api-client';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
-import { Sun, Moon, Laptop, Link2, Keyboard } from 'lucide-react';
+import { Modal } from '../components/ui/Modal';
+import { Input } from '../components/ui/Input';
+import { Alert } from '../components/ui/Alert';
+import {
+  Sun,
+  Moon,
+  Laptop,
+  Keyboard,
+  Download,
+  Trash2,
+  AlertTriangle,
+  ShieldAlert,
+} from 'lucide-react';
+import { ConnectedAccountsSection } from '../features/integrations/components/ConnectedAccountsSection';
 
 export const SettingsPage: React.FC = () => {
   const { user } = useUser();
+  const clerk = useClerk();
+  const apiClient = useApiClient();
   const { theme, resolvedTheme, setTheme } = useTheme();
+
+  // Export state
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  // Deletion modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [confirmationText, setConfirmationText] = useState('');
+  const [password, setPassword] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
+
+  const isPasswordUser = Boolean(user?.passwordEnabled);
+
+  const canSubmitDeletion =
+    isPasswordUser &&
+    confirmationText.trim() === 'DELETE MY ACCOUNT' &&
+    password.trim().length > 0 &&
+    !isDeleting;
+
+  const handleExportData = async () => {
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      const data = await apiClient.get<Record<string, unknown>>('/api/v1/account/export');
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `avenza-account-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmitDeletion) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      if (isPasswordUser) {
+        await apiClient.delete('/api/v1/auth/me', {
+          confirmation: confirmationText.trim(),
+          password,
+          authMethod: 'password',
+        });
+      } else {
+        await apiClient.delete('/api/v1/auth/me', {
+          confirmation: confirmationText.trim(),
+          authMethod: 'oauth',
+        });
+      }
+
+      setDeleteSuccess(true);
+      setTimeout(async () => {
+        await clerk.signOut();
+        window.location.href = '/';
+      }, 1500);
+    } catch (err: unknown) {
+      setIsDeleting(false);
+      setDeleteError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (isDeleting) return;
+    setIsDeleteModalOpen(false);
+    setConfirmationText('');
+    setPassword('');
+    setDeleteError(null);
+    setDeleteSuccess(false);
+  };
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -85,23 +182,35 @@ export const SettingsPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Connected Accounts Section (inside Settings as specified) */}
+      {/* Connected Accounts Section */}
+      <ConnectedAccountsSection />
+
+      {/* Data & Privacy: Export */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Link2 className="w-4 h-4 text-muted-foreground" />
-            <CardTitle className="text-sm">Connected Accounts</CardTitle>
-            <Badge variant="secondary">Upcoming Phase</Badge>
+            <Download className="w-4 h-4 text-muted-foreground" />
+            <CardTitle className="text-sm">Data & Privacy</CardTitle>
           </div>
           <CardDescription>
-            Third-party integrations (GitHub, LeetCode, Google Calendar, WakaTime) will be connected
-            here in the Integrations phase.
+            Download a complete JSON export of all your personal data, goals, tasks, academics, and evidence logs.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">
-            No external accounts connected yet. Integrations will be established in subsequent phases.
-          </p>
+        <CardContent className="space-y-3">
+          {exportError && (
+            <Alert variant="danger" title="Export Failed">
+              {exportError}
+            </Alert>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportData}
+            isLoading={isExporting}
+            leftIcon={<Download className="w-3.5 h-3.5" />}
+          >
+            Export All Account Data (JSON)
+          </Button>
         </CardContent>
       </Card>
 
@@ -130,6 +239,122 @@ export const SettingsPage: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Danger Zone: Account Deletion */}
+      <Card className="border-rose-500/20 bg-rose-500/5">
+        <CardHeader>
+          <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+            <ShieldAlert className="w-4 h-4" />
+            <CardTitle className="text-sm text-rose-600 dark:text-rose-400">Danger Zone</CardTitle>
+          </div>
+          <CardDescription>
+            Permanently delete your account and all associated workspace data. This action cannot be undone.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => setIsDeleteModalOpen(true)}
+            leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+          >
+            Delete Account...
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={handleCloseModal}
+        title={
+          <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+            <AlertTriangle className="w-5 h-5" />
+            <span>Delete Account Permanently</span>
+          </div>
+        }
+        description="This action is irreversible and will permanently purge all your data."
+      >
+        <form onSubmit={handleDeleteAccount} className="space-y-4 text-xs">
+          <Alert variant="danger">
+            <strong>Warning:</strong> Deleting your account will permanently delete all your profiles,
+            goals, tasks, focus sessions, evidence items, and revoke all external provider integrations (GitHub, Google Calendar).
+          </Alert>
+
+          {isPasswordUser ? (
+            <div className="space-y-1.5">
+              <Input
+                label="Account Password"
+                type="password"
+                placeholder="Enter your current password to authenticate"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isDeleting}
+              />
+            </div>
+          ) : (
+            <Alert variant="warning" title="Password Required for Self-Service Deletion">
+              <div className="space-y-2">
+                <p>
+                  Your account is authenticated via OAuth/social login without a password. Self-service
+                  account deletion currently requires server-side password verification for security.
+                </p>
+                <p className="font-semibold">
+                  Next step: Please add a password to your account in your Clerk profile settings to proceed
+                  with self-service deletion, or contact support for manual deletion assistance.
+                </p>
+              </div>
+            </Alert>
+          )}
+
+          {isPasswordUser && (
+            <div className="space-y-1.5">
+              <Input
+                label='To confirm, type "DELETE MY ACCOUNT" below:'
+                placeholder="DELETE MY ACCOUNT"
+                value={confirmationText}
+                onChange={(e) => setConfirmationText(e.target.value)}
+                required
+                disabled={isDeleting}
+              />
+            </div>
+          )}
+
+          {deleteError && (
+            <Alert variant="danger" title="Deletion Request Failed">
+              {deleteError}
+            </Alert>
+          )}
+
+          {deleteSuccess && (
+            <Alert variant="success" title="Account Deleted">
+              Your account has been deleted successfully. Signing out...
+            </Alert>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCloseModal}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="danger"
+              size="sm"
+              disabled={!canSubmitDeletion}
+              isLoading={isDeleting}
+            >
+              {isPasswordUser ? 'Permanently Delete Account' : 'Password Required to Delete'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

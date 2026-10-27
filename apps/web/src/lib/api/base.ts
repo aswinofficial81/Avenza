@@ -1,70 +1,58 @@
-export const useBaseApi = () => {
-  const baseUrl = import.meta.env.VITE_API_URL || '/api/v1';
+import { useApiClient } from '../api-client';
 
-  const get = async <T>(endpoint: string, options: { params?: Record<string, unknown> } = {}): Promise<T> => {
-    const url = new URL(`${baseUrl}${endpoint}`);
-    Object.keys(options.params || {}).forEach(key => {
-      if (options.params?.[key] !== undefined && options.params?.[key] !== null) {
-        url.searchParams.append(key, String(options.params[key]));
+export const useBaseApi = () => {
+  const api = useApiClient();
+
+  const buildPath = (endpoint: string, params?: Record<string, unknown>): string => {
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const fullPath = normalizedEndpoint.startsWith('/api/v1')
+      ? normalizedEndpoint
+      : `/api/v1${normalizedEndpoint}`;
+
+    if (!params) {
+      return fullPath;
+    }
+
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        searchParams.append(key, String(val));
       }
     });
 
-    const response = await fetch(url.toString(), {
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    return response.json();
+    const queryStr = searchParams.toString();
+    return queryStr ? `${fullPath}?${queryStr}` : fullPath;
   };
 
-  const post = async <T>(endpoint: string, data: unknown): Promise<T> => {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+  const unwrap = <T>(res: unknown): T => {
+    if (res && typeof res === 'object' && 'data' in res && (res as { success?: boolean }).success === true) {
+      return (res as { data: T }).data;
     }
-
-    return response.json();
+    return res as T;
   };
 
-  const patch = async <T>(endpoint: string, data: unknown): Promise<T> => {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify(data),
-    });
+  const get = async <T>(endpoint: string, options: { params?: Record<string, unknown> } = {}): Promise<T> => {
+    const path = buildPath(endpoint, options.params);
+    const res = await api.get<unknown>(path);
+    return unwrap<T>(res);
+  };
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
+  const post = async <T>(endpoint: string, data?: unknown): Promise<T> => {
+    const path = buildPath(endpoint);
+    const res = await api.post<unknown>(path, data);
+    return unwrap<T>(res);
+  };
 
-    return response.json();
+  const patch = async <T>(endpoint: string, data?: unknown): Promise<T> => {
+    const path = buildPath(endpoint);
+    const res = await api.patch<unknown>(path, data);
+    return unwrap<T>(res);
   };
 
   const del = async <T>(endpoint: string): Promise<T> => {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    return response.json();
+    const path = buildPath(endpoint);
+    const res = await api.delete<unknown>(path);
+    return unwrap<T>(res);
   };
 
   return {

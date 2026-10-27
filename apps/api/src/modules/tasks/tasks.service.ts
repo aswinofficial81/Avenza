@@ -13,13 +13,16 @@ import type {
 } from '@avenza/shared';
 import type { IGoalsRepository } from '../goals/goals.types';
 import { defaultGoalsRepository } from '../goals/goals.repository';
-import type { ITasksRepository, TaskFindOptions } from './tasks.types';
+import type { IProjectsRepository } from '../projects/projects.repository';
+import { defaultProjectsRepository } from '../projects/projects.repository';
+import { type ITasksRepository, type TaskFindOptions, TaskBlockedError } from './tasks.types';
 import { defaultTasksRepository } from './tasks.repository';
 
 export class TasksService {
   constructor(
     private readonly tasksRepository: ITasksRepository = defaultTasksRepository,
-    private readonly goalsRepository: IGoalsRepository = defaultGoalsRepository
+    private readonly goalsRepository: IGoalsRepository = defaultGoalsRepository,
+    private readonly projectsRepository: IProjectsRepository = defaultProjectsRepository
   ) {}
 
   async listTasks(options: TaskFindOptions): Promise<PaginatedList<TaskDto>> {
@@ -30,6 +33,28 @@ export class TasksService {
       taskIds,
       options.userId
     );
+
+    // Batch fetch project and milestone titles if present
+    const projectTitlesMap = new Map<string, string>();
+    const projectMilestoneTitlesMap = new Map<string, string>();
+    const distinctProjectIds = Array.from(
+      new Set(paginated.data.map((t) => t.project_id).filter((id): id is string => Boolean(id)))
+    );
+
+    if (distinctProjectIds.length > 0) {
+      await Promise.all(
+        distinctProjectIds.map(async (pId) => {
+          const proj = await this.projectsRepository.findProjectById(pId, options.userId);
+          if (proj) {
+            projectTitlesMap.set(proj.id, proj.title);
+          }
+          const milestones = await this.projectsRepository.findMilestonesByProjectId(pId, options.userId);
+          for (const m of milestones) {
+            projectMilestoneTitlesMap.set(m.id, m.title);
+          }
+        })
+      );
+    }
 
     const data: TaskDto[] = paginated.data.map((task) => {
       const summary = summaries.get(task.id) || {
@@ -51,6 +76,10 @@ export class TasksService {
         status: task.status as TaskStatus,
         priority: task.priority as TaskPriority,
         task_type: task.task_type as TaskType,
+        project_title: task.project_id ? projectTitlesMap.get(task.project_id) || null : null,
+        project_milestone_title: task.project_milestone_id
+          ? projectMilestoneTitlesMap.get(task.project_milestone_id) || null
+          : null,
         is_blocked: isBlocked,
         blocking_task_count: summary.uncompletedPrerequisites,
         blocked_by: summary.blockedBy,
@@ -112,6 +141,26 @@ export class TasksService {
       }
     }
 
+    // Fetch project title and project milestone title if present
+    let projectTitle: string | null = null;
+    let projectMilestoneTitle: string | null = null;
+    if (task.project_id) {
+      const proj = await this.projectsRepository.findProjectById(task.project_id, userId);
+      if (proj) {
+        projectTitle = proj.title;
+      }
+      if (task.project_milestone_id) {
+        const ms = await this.projectsRepository.findMilestoneById(
+          task.project_milestone_id,
+          task.project_id,
+          userId
+        );
+        if (ms) {
+          projectMilestoneTitle = ms.title;
+        }
+      }
+    }
+
     const dependencies: TaskDependencyDto[] = dependenciesWithPrereqs.map((d) => ({
       id: d.id,
       task_id: d.task_id,
@@ -134,6 +183,8 @@ export class TasksService {
       task_type: task.task_type as TaskType,
       goal_title: goalTitle,
       milestone_title: milestoneTitle,
+      project_title: projectTitle,
+      project_milestone_title: projectMilestoneTitle,
       is_blocked: isBlocked,
       blocking_task_count: blockedBy.length,
       blocked_by: blockedBy,
@@ -144,7 +195,7 @@ export class TasksService {
   }
 
   async createTask(userId: string, input: CreateTaskInput): Promise<TaskDetailDto> {
-    // 1. Cross-domain ownership & consistency validation
+    // 1. Cross-domain ownership & consistency validation for goals & milestones
     let resolvedGoalId = input.goal_id ?? null;
     const resolvedMilestoneId = input.milestone_id ?? null;
 
@@ -187,7 +238,30 @@ export class TasksService {
       }
     }
 
-    // 2. Schedule dates validation
+    // 2. Cross-domain ownership & consistency validation for projects & project milestones
+    const resolvedProjectId = input.project_id ?? null;
+    const resolvedProjectMilestoneId = input.project_milestone_id ?? null;
+
+    if (resolvedProjectMilestoneId) {
+      if (!resolvedProjectId) {
+        throw new Error('Project milestone requires a project.');
+      }
+      const ms = await this.projectsRepository.findMilestoneById(
+        resolvedProjectMilestoneId,
+        resolvedProjectId,
+        userId
+      );
+      if (!ms) {
+        throw new Error('Project milestone not found or does not belong to the specified project and user.');
+      }
+    } else if (resolvedProjectId) {
+      const proj = await this.projectsRepository.findProjectById(resolvedProjectId, userId);
+      if (!proj) {
+        throw new Error('Project not found or does not belong to the authenticated user.');
+      }
+    }
+
+    // 3. Schedule dates validation
     if (input.scheduled_start && input.scheduled_end) {
       const start = new Date(input.scheduled_start).getTime();
       const end = new Date(input.scheduled_end).getTime();
@@ -196,7 +270,7 @@ export class TasksService {
       }
     }
 
-    // 3. Lifecycle status & completed_at
+    // 4. Lifecycle status & completed_at
     const status = input.status || 'inbox';
     const completedAt = status === 'completed' ? new Date().toISOString() : null;
 
@@ -209,6 +283,9 @@ export class TasksService {
       task_type: input.task_type || 'personal',
       goal_id: resolvedGoalId,
       milestone_id: resolvedMilestoneId,
+      project_id: resolvedProjectId,
+      project_milestone_id: resolvedProjectMilestoneId,
+      application_id: input.application_id ?? null,
       estimated_minutes: input.estimated_minutes ?? null,
       actual_minutes: input.actual_minutes ?? null,
       due_at: input.due_at ?? null,
@@ -233,7 +310,7 @@ export class TasksService {
     const existing = await this.tasksRepository.findTaskById(id, userId);
     if (!existing) return null;
 
-    // 1. Cross-domain ownership & consistency validation
+    // 1. Cross-domain ownership & consistency validation for goals & milestones
     const resolvedGoalId: string | null =
       input.goal_id !== undefined ? input.goal_id : existing.goal_id;
     const resolvedMilestoneId: string | null =
@@ -259,7 +336,43 @@ export class TasksService {
       }
     }
 
-    // 2. Schedule dates validation
+    // 2. Cross-domain ownership & consistency validation for projects & project milestones
+    let finalProjectId =
+      input.project_id !== undefined ? input.project_id : existing.project_id;
+    let finalProjectMilestoneId =
+      input.project_milestone_id !== undefined
+        ? input.project_milestone_id
+        : existing.project_milestone_id;
+
+    if (input.project_id === null) {
+      finalProjectId = null;
+      finalProjectMilestoneId = null;
+    }
+
+    if (input.project_milestone_id && finalProjectId === null) {
+      throw new Error('Project milestone requires a project.');
+    }
+
+    if (finalProjectMilestoneId) {
+      if (!finalProjectId) {
+        throw new Error('Project milestone requires a project.');
+      }
+      const ms = await this.projectsRepository.findMilestoneById(
+        finalProjectMilestoneId,
+        finalProjectId,
+        userId
+      );
+      if (!ms) {
+        throw new Error('Project milestone not found or does not belong to the specified project and user.');
+      }
+    } else if (input.project_id !== undefined && input.project_id !== null) {
+      const proj = await this.projectsRepository.findProjectById(input.project_id, userId);
+      if (!proj) {
+        throw new Error('Project not found or does not belong to the authenticated user.');
+      }
+    }
+
+    // 3. Schedule dates validation
     const effectiveStart =
       input.scheduled_start !== undefined ? input.scheduled_start : existing.scheduled_start;
     const effectiveEnd =
@@ -273,7 +386,30 @@ export class TasksService {
       }
     }
 
-    // 3. Lifecycle transitions for status & completed_at
+    // 4. Blocked task state transition validation (DEF-17C-01)
+    // Authoritative check: Tasks with uncompleted prerequisites cannot transition to 'in_progress' or 'completed'.
+    // Concurrency note: Dependency state is rechecked immediately prior to mutation. Under standard non-locking read-then-write,
+    // a concurrent transaction reopening a prerequisite between this check and the write could theoretically create an edge case;
+    // this check provides authoritative application-level enforcement given the current repository locking model.
+    if (input.status === 'completed' || input.status === 'in_progress') {
+      const dependencies = await this.tasksRepository.findDependenciesByTaskId(id, userId);
+      const incompletePrereqs = dependencies.filter(
+        (d) => d.prerequisite.status !== 'completed'
+      );
+      if (incompletePrereqs.length > 0) {
+        const blockedBy = incompletePrereqs.map((d) => ({
+          id: d.prerequisite.id,
+          title: d.prerequisite.title,
+          status: d.prerequisite.status,
+        }));
+        throw new TaskBlockedError(
+          `Cannot transition task to '${input.status}' because it is blocked by ${incompletePrereqs.length} incomplete prerequisite task(s).`,
+          blockedBy
+        );
+      }
+    }
+
+    // 5. Lifecycle transitions for status & completed_at
     let completedAt = existing.completed_at;
     if (input.status !== undefined) {
       if (input.status === 'completed' && existing.status !== 'completed') {
@@ -292,6 +428,11 @@ export class TasksService {
     if (input.task_type !== undefined) updatePayload.task_type = input.task_type;
     if (input.goal_id !== undefined) updatePayload.goal_id = resolvedGoalId;
     if (input.milestone_id !== undefined) updatePayload.milestone_id = resolvedMilestoneId;
+    if (input.project_id !== undefined) updatePayload.project_id = finalProjectId;
+    if (input.project_milestone_id !== undefined || input.project_id === null) {
+      updatePayload.project_milestone_id = finalProjectMilestoneId;
+    }
+    if (input.application_id !== undefined) updatePayload.application_id = input.application_id;
     if (input.estimated_minutes !== undefined)
       updatePayload.estimated_minutes = input.estimated_minutes;
     if (input.actual_minutes !== undefined) updatePayload.actual_minutes = input.actual_minutes;

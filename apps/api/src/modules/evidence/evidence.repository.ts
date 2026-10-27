@@ -555,4 +555,9 @@ export class InMemoryEvidenceRepository implements IEvidenceRepository {
     this.linksList = this.linksList.filter((l) => l.evidence_id !== id);
     return true;
   }
+
+  getEvidenceRowById(id: string): EvidenceRow | null {
+    const item = this.evidenceList.find((e) => e.id === id);
+    return item ? { ...item } : null;
+  }
 }

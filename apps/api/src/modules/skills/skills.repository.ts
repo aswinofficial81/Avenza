@@ -2,6 +2,7 @@ import {
   type CreateSkillInput,
   type Database,
   type EvidenceDto,
+  type EvidenceLinkDto,
   type EvidenceSkillDto,
   type GoalSkillDto,
   type LinkEvidenceToSkillInput,
@@ -21,7 +22,7 @@ import { getSupabaseAdminClient } from '../../db/supabase.client';
 import type { ISkillsRepository } from './skills.types';
 
 export class SupabaseSkillsRepository implements ISkillsRepository {
-  constructor(private readonly client: SupabaseClient<Database> = getSupabaseAdminClient()) {}
+  constructor(private readonly client: SupabaseClient<Database> = getSupabaseAdminClient()) { }
 
   private mapSkillRow(row: SkillRow, parent?: { id: string; name: string; slug: string } | null): SkillDto {
     return {
@@ -593,5 +594,396 @@ export class SupabaseSkillsRepository implements ISkillsRepository {
     }
 
     return rows.map((r) => this.mapSkillRow(r));
+  }
+}
+
+export interface ISkillsEvidenceLookup {
+  getEvidenceRowById(id: string): { user_id: string } | null;
+  findEvidenceById(
+    id: string,
+    userId: string
+  ): Promise<{ evidence: EvidenceDto; links?: EvidenceLinkDto[] } | null>;
+}
+
+export class InMemorySkillsRepository implements ISkillsRepository {
+  private skills: SkillDto[] = [];
+  private evidenceSkillLinks: Array<{
+    evidence_id: string;
+    skill_id: string;
+    user_id: string;
+    created_at: string;
+  }> = [];
+  private goalSkillLinks: Array<{
+    goal_id: string;
+    skill_id: string;
+    user_id: string;
+    created_at: string;
+    target_mastery_state: GoalSkillDto['target_mastery_state'];
+  }> = [];
+  private taskSkillLinks: Array<{
+    task_id: string;
+    skill_id: string;
+    user_id: string;
+    created_at: string;
+  }> = [];
+  private topicSkillLinks: Array<{
+    topic_id: string;
+    skill_id: string;
+    user_id: string;
+    created_at: string;
+  }> = [];
+
+  constructor(
+    initialSkills: SkillDto[] = [],
+    private readonly evidenceLookup?: ISkillsEvidenceLookup
+  ) {
+    this.skills = [...initialSkills];
+  }
+
+  async createSkill(userId: string, data: CreateSkillInput): Promise<SkillDto> {
+    const slug = data.slug && data.slug.trim().length > 0 ? data.slug.trim() : slugifySkillName(data.name);
+
+    let parent: { id: string; name: string; slug: string } | null = null;
+    if (data.parent_skill_id) {
+      const parentSkill = await this.getSkillById(userId, data.parent_skill_id);
+      if (parentSkill) {
+        parent = { id: parentSkill.id, name: parentSkill.name, slug: parentSkill.slug };
+      }
+    }
+
+    const now = new Date().toISOString();
+    const newSkill: SkillDto = {
+      id: crypto.randomUUID(),
+      user_id: userId,
+      parent_skill_id: data.parent_skill_id ?? null,
+      name: data.name.trim(),
+      slug,
+      description: data.description ?? null,
+      category: data.category ?? null,
+      status: 'active',
+      source: 'user',
+      created_at: now,
+      updated_at: now,
+      parent_skill: parent,
+    };
+
+    this.skills.push(newSkill);
+    return { ...newSkill };
+  }
+
+  async getSkillById(userId: string, skillId: string): Promise<SkillDto | null> {
+    const skill = this.skills.find((s) => s.id === skillId && s.user_id === userId);
+    if (!skill) return null;
+
+    let parent: { id: string; name: string; slug: string } | null = null;
+    if (skill.parent_skill_id) {
+      const parentSkill = this.skills.find(
+        (s) => s.id === skill.parent_skill_id && s.user_id === userId
+      );
+      if (parentSkill) {
+        parent = { id: parentSkill.id, name: parentSkill.name, slug: parentSkill.slug };
+      }
+    }
+
+    return { ...skill, parent_skill: parent };
+  }
+
+  async getSkillBySlug(userId: string, slug: string): Promise<SkillDto | null> {
+    const skill = this.skills.find((s) => s.slug === slug && s.user_id === userId);
+    return skill ? { ...skill } : null;
+  }
+
+  async listSkills(userId: string, query?: SkillQueryInput): Promise<SkillDto[]> {
+    let result = this.skills.filter((s) => s.user_id === userId);
+
+    if (query?.status) {
+      result = result.filter((s) => s.status === query.status);
+    }
+    if (query?.category) {
+      result = result.filter((s) => s.category === query.category);
+    }
+    if (query?.parent_skill_id !== undefined) {
+      result = result.filter((s) => s.parent_skill_id === query.parent_skill_id);
+    }
+    if (query?.search && query.search.trim()) {
+      const q = query.search.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          (s.description && s.description.toLowerCase().includes(q))
+      );
+    }
+
+    return result.sort((a, b) => a.name.localeCompare(b.name)).map((s) => ({ ...s }));
+  }
+
+  async updateSkill(userId: string, skillId: string, data: UpdateSkillInput): Promise<SkillDto> {
+    const idx = this.skills.findIndex((s) => s.id === skillId && s.user_id === userId);
+    if (idx === -1) {
+      throw new Error('Skill not found');
+    }
+
+    const existing = this.skills[idx]!;
+    const now = new Date().toISOString();
+    const updated: SkillDto = {
+      ...existing,
+      name: data.name !== undefined ? data.name.trim() : existing.name,
+      slug:
+        data.slug !== undefined
+          ? data.slug
+          : data.name !== undefined
+            ? slugifySkillName(data.name)
+            : existing.slug,
+      description: data.description !== undefined ? data.description : existing.description,
+      category: data.category !== undefined ? data.category : existing.category,
+      parent_skill_id:
+        data.parent_skill_id !== undefined ? data.parent_skill_id : existing.parent_skill_id,
+      updated_at: now,
+    };
+
+    this.skills[idx] = updated;
+    return { ...updated };
+  }
+
+  async archiveSkill(userId: string, skillId: string): Promise<SkillDto> {
+    const idx = this.skills.findIndex((s) => s.id === skillId && s.user_id === userId);
+    if (idx === -1) throw new Error('Skill not found');
+
+    this.skills[idx] = {
+      ...this.skills[idx]!,
+      status: 'archived',
+      updated_at: new Date().toISOString(),
+    };
+    return { ...this.skills[idx]! };
+  }
+
+  async deleteSkill(userId: string, skillId: string): Promise<void> {
+    const idx = this.skills.findIndex((s) => s.id === skillId && s.user_id === userId);
+    if (idx === -1) throw new Error('Skill not found');
+
+    this.skills.splice(idx, 1);
+    this.evidenceSkillLinks = this.evidenceSkillLinks.filter((l) => l.skill_id !== skillId);
+    this.goalSkillLinks = this.goalSkillLinks.filter((l) => l.skill_id !== skillId);
+    this.taskSkillLinks = this.taskSkillLinks.filter((l) => l.skill_id !== skillId);
+    this.topicSkillLinks = this.topicSkillLinks.filter((l) => l.skill_id !== skillId);
+  }
+
+  // Evidence links
+  async linkEvidence(userId: string, data: LinkEvidenceToSkillInput): Promise<EvidenceSkillDto> {
+    const skill = this.skills.find((s) => s.id === data.skill_id && s.user_id === userId);
+    if (!skill) {
+      throw new Error('Referenced skill not found');
+    }
+
+    if (this.evidenceLookup) {
+      const ev = this.evidenceLookup.getEvidenceRowById(data.evidence_id);
+      if (!ev) {
+        throw new Error('Referenced evidence does not exist (not found)');
+      }
+      if (ev.user_id !== userId) {
+        throw new Error('Referenced evidence does not belong to user (User ID must match across evidence and skill records)');
+      }
+    }
+
+    const duplicate = this.evidenceSkillLinks.find(
+      (l) => l.evidence_id === data.evidence_id && l.skill_id === data.skill_id
+    );
+    if (duplicate) {
+      throw new Error(
+        'Failed to link evidence to skill: duplicate key value violates unique constraint pk_evidence_skills'
+      );
+    }
+
+    const now = new Date().toISOString();
+    const link: EvidenceSkillDto = {
+      evidence_id: data.evidence_id,
+      skill_id: data.skill_id,
+      user_id: userId,
+      created_at: now,
+    };
+
+    this.evidenceSkillLinks.push(link);
+    return { ...link };
+  }
+
+  async unlinkEvidence(userId: string, evidenceId: string, skillId: string): Promise<void> {
+    this.evidenceSkillLinks = this.evidenceSkillLinks.filter(
+      (l) => !(l.evidence_id === evidenceId && l.skill_id === skillId && l.user_id === userId)
+    );
+  }
+
+  async getEvidenceForSkill(userId: string, skillId: string): Promise<EvidenceDto[]> {
+    const links = this.evidenceSkillLinks.filter(
+      (l) => l.skill_id === skillId && l.user_id === userId
+    );
+    if (links.length === 0) return [];
+
+    const results: EvidenceDto[] = [];
+    if (this.evidenceLookup) {
+      for (const l of links) {
+        const item = await this.evidenceLookup.findEvidenceById(l.evidence_id, userId);
+        if (item) {
+          const ev = item.evidence;
+          results.push({
+            id: ev.id,
+            user_id: ev.user_id,
+            evidence_type: ev.evidence_type,
+            title: ev.title,
+            description: ev.description,
+            source_type: ev.source_type,
+            source_id: ev.source_id,
+            source_reference: ev.source_reference,
+            external_url: ev.external_url,
+            occurred_at: ev.occurred_at,
+            recorded_at: ev.recorded_at,
+            verification_status: ev.verification_status,
+            evidence_strength: ev.evidence_strength,
+            reliability: ev.reliability,
+            directness: ev.directness,
+            notes: ev.notes,
+            metadata: ev.metadata,
+            created_at: ev.created_at,
+            updated_at: ev.updated_at,
+            links: item.links?.map((link: EvidenceLinkDto) => ({
+              id: link.id,
+              evidence_id: link.evidence_id,
+              entity_type: link.entity_type,
+              entity_id: link.entity_id,
+              created_at: link.created_at,
+              entity_title: link.entity_title ?? null,
+            })),
+          });
+        }
+      }
+    }
+
+    results.sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
+    return results;
+  }
+
+  async getSkillsForEvidence(userId: string, evidenceId: string): Promise<SkillDto[]> {
+    const links = this.evidenceSkillLinks.filter(
+      (l) => l.evidence_id === evidenceId && l.user_id === userId
+    );
+    const skillIds = links.map((l) => l.skill_id);
+    return this.skills.filter((s) => skillIds.includes(s.id) && s.user_id === userId);
+  }
+
+  // Goal links
+  async linkGoal(userId: string, data: LinkGoalToSkillInput): Promise<GoalSkillDto> {
+    const now = new Date().toISOString();
+    const link: GoalSkillDto = {
+      goal_id: data.goal_id,
+      skill_id: data.skill_id,
+      user_id: userId,
+      created_at: now,
+      target_mastery_state: data.target_mastery_state ?? null,
+    };
+    this.goalSkillLinks.push(link);
+    return { ...link };
+  }
+
+  async unlinkGoal(userId: string, goalId: string, skillId: string): Promise<void> {
+    this.goalSkillLinks = this.goalSkillLinks.filter(
+      (l) => !(l.goal_id === goalId && l.skill_id === skillId && l.user_id === userId)
+    );
+  }
+
+  async getGoalsForSkill(
+    userId: string,
+    skillId: string
+  ): Promise<
+    Array<{
+      id: string;
+      title: string;
+      status: string;
+      target_mastery_state: GoalSkillDto['target_mastery_state'];
+    }>
+  > {
+    return this.goalSkillLinks
+      .filter((l) => l.skill_id === skillId && l.user_id === userId)
+      .map((l) => ({
+        id: l.goal_id,
+        title: 'Mock Goal',
+        status: 'active',
+        target_mastery_state: l.target_mastery_state,
+      }));
+  }
+
+  // Task links
+  async linkTask(userId: string, data: LinkTaskToSkillInput): Promise<TaskSkillDto> {
+    const now = new Date().toISOString();
+    const link: TaskSkillDto = {
+      task_id: data.task_id,
+      skill_id: data.skill_id,
+      user_id: userId,
+      created_at: now,
+    };
+    this.taskSkillLinks.push(link);
+    return { ...link };
+  }
+
+  async unlinkTask(userId: string, taskId: string, skillId: string): Promise<void> {
+    this.taskSkillLinks = this.taskSkillLinks.filter(
+      (l) => !(l.task_id === taskId && l.skill_id === skillId && l.user_id === userId)
+    );
+  }
+
+  async getTasksForSkill(
+    userId: string,
+    skillId: string
+  ): Promise<Array<{ id: string; title: string; status: string }>> {
+    return this.taskSkillLinks
+      .filter((l) => l.skill_id === skillId && l.user_id === userId)
+      .map((l) => ({ id: l.task_id, title: 'Mock Task', status: 'completed' }));
+  }
+
+  // Topic links
+  async linkTopic(userId: string, data: LinkTopicToSkillInput): Promise<TopicSkillDto> {
+    const now = new Date().toISOString();
+    const link: TopicSkillDto = {
+      topic_id: data.topic_id,
+      skill_id: data.skill_id,
+      user_id: userId,
+      created_at: now,
+    };
+    this.topicSkillLinks.push(link);
+    return { ...link };
+  }
+
+  async unlinkTopic(userId: string, topicId: string, skillId: string): Promise<void> {
+    this.topicSkillLinks = this.topicSkillLinks.filter(
+      (l) => !(l.topic_id === topicId && l.skill_id === skillId && l.user_id === userId)
+    );
+  }
+
+  async getTopicsForSkill(
+    userId: string,
+    skillId: string
+  ): Promise<
+    Array<{
+      id: string;
+      name: string;
+      status: string;
+      subject_id: string;
+      subject_name?: string;
+    }>
+  > {
+    return this.topicSkillLinks
+      .filter((l) => l.skill_id === skillId && l.user_id === userId)
+      .map((l) => ({
+        id: l.topic_id,
+        name: 'Mock Topic',
+        status: 'active',
+        subject_id: crypto.randomUUID(),
+        subject_name: 'Computer Science',
+      }));
+  }
+
+  // Children
+  async getChildSkills(userId: string, parentSkillId: string): Promise<SkillDto[]> {
+    return this.skills
+      .filter((s) => s.parent_skill_id === parentSkillId && s.user_id === userId)
+      .map((s) => ({ ...s }));
   }
 }

@@ -45,6 +45,16 @@ export class ProfileService {
   async getProfileByClerkId(clerkUserId: string): Promise<ProfileRow | null> {
     return this.repository.findByClerkUserId(clerkUserId);
   }
+
+  async deleteProfile(id: string): Promise<boolean> {
+    return this.repository.deleteProfile(id);
+  }
+
+  async deleteProfileByClerkId(clerkUserId: string): Promise<boolean> {
+    const profile = await this.repository.findByClerkUserId(clerkUserId);
+    if (!profile) return false;
+    return this.repository.deleteProfile(profile.id);
+  }
 }
 
 export const defaultProfileService = new ProfileService();

@@ -19,11 +19,16 @@ import {
 import { AlertCircle, Link as LinkIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-interface CreateTaskModalProps {
+import { useProjectMilestones } from '../../projects/hooks/useProjects';
+
+export interface CreateTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialGoalId?: string;
   initialMilestoneId?: string;
+  initialProjectId?: string;
+  initialProjectMilestoneId?: string;
+  initialApplicationId?: string;
 }
 
 export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
@@ -31,14 +36,22 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   onClose,
   initialGoalId = '',
   initialMilestoneId = '',
+  initialProjectId = '',
+  initialProjectMilestoneId = '',
+  initialApplicationId = '',
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [taskType, setTaskType] = useState<TaskType>('study');
+  const [taskType, setTaskType] = useState<TaskType>(
+    initialProjectId ? 'project' : initialApplicationId ? 'career' : 'study'
+  );
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [status, setStatus] = useState<TaskStatus>('inbox');
   const [goalId, setGoalId] = useState(initialGoalId);
   const [milestoneId, setMilestoneId] = useState(initialMilestoneId);
+  const [projectId, setProjectId] = useState(initialProjectId);
+  const [projectMilestoneId, setProjectMilestoneId] = useState(initialProjectMilestoneId);
+  const [applicationId, setApplicationId] = useState(initialApplicationId);
   const [academicSubjectId, setAcademicSubjectId] = useState('');
   const [academicTopicId, setAcademicTopicId] = useState('');
   const [estimatedMinutes, setEstimatedMinutes] = useState<string>('');
@@ -50,6 +63,21 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   const createTaskMutation = useCreateTask();
 
+  // Sync initial props when opened
+  React.useEffect(() => {
+    if (initialProjectId) {
+      setProjectId(initialProjectId);
+      setTaskType('project');
+    }
+    if (initialProjectMilestoneId) {
+      setProjectMilestoneId(initialProjectMilestoneId);
+    }
+    if (initialApplicationId) {
+      setApplicationId(initialApplicationId);
+      setTaskType('career');
+    }
+  }, [initialProjectId, initialProjectMilestoneId, initialApplicationId, isOpen]);
+
   // Fetch real goals
   const { data: goalsData, isLoading: isLoadingGoals } = useGoals({ pageSize: 100 });
   const goals = goalsData?.data || [];
@@ -58,6 +86,9 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const { data: milestones = [], isLoading: isLoadingMilestones } = useGoalMilestones(
     goalId || undefined
   );
+
+  // Fetch milestones for selected project
+  const { data: projectMilestones = [] } = useProjectMilestones(projectId || undefined);
 
   // Fetch academic subjects and topics
   const { data: subjects = [] } = useSubjects();
@@ -107,6 +138,9 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         status,
         goal_id: goalId || undefined,
         milestone_id: milestoneId || undefined,
+        project_id: projectId || undefined,
+        project_milestone_id: projectMilestoneId || undefined,
+        application_id: applicationId || undefined,
         academic_subject_id: academicSubjectId || undefined,
         academic_topic_id: academicTopicId || undefined,
         estimated_minutes: parsedEstimate,
@@ -128,11 +162,14 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setTaskType('study');
+    setTaskType(initialProjectId ? 'project' : initialApplicationId ? 'career' : 'study');
     setPriority('medium');
     setStatus('inbox');
     setGoalId(initialGoalId);
     setMilestoneId(initialMilestoneId);
+    setProjectId(initialProjectId);
+    setProjectMilestoneId(initialProjectMilestoneId);
+    setApplicationId(initialApplicationId);
     setAcademicSubjectId('');
     setAcademicTopicId('');
     setEstimatedMinutes('');
@@ -286,6 +323,36 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </Select>
           </div>
         </div>
+
+        {/* Project Milestone Selection */}
+        {projectId && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="task-project">Project Scope</Label>
+              <Input
+                id="task-project"
+                value="Associated Project"
+                disabled
+                className="text-xs bg-surface-2 cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <Label htmlFor="task-project-milestone">Associated Milestone (Optional)</Label>
+              <Select
+                id="task-project-milestone"
+                value={projectMilestoneId}
+                onChange={(e) => setProjectMilestoneId(e.target.value)}
+              >
+                <option value="">None</option>
+                {projectMilestones.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.title}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        )}
 
         {/* Academic Subject & Topic (Phase 11) */}
         {subjects.length > 0 && (

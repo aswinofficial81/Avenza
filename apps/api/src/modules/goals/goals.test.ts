@@ -1,5 +1,4 @@
 import fastify from 'fastify';
-import { describe, expect, it } from 'vitest';
 import type { IClerkClient } from '../../auth/clerk/clerk.client';
 import { AuthService } from '../../auth/auth.service';
 import { createRequireAuthMiddleware } from '../../auth/auth.middleware';
@@ -10,6 +9,7 @@ import { GoalsService } from './goals.service';
 import { GoalsController } from './goals.controller';
 import { createGoalsRoutes } from './goals.routes';
 import { registerErrorHandler } from '../../plugins/error-handler';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('Goals & Milestones API (/api/v1/goals)', () => {
   const mockClerkClient: IClerkClient = {
@@ -84,35 +84,41 @@ describe('Goals & Milestones API (/api/v1/goals)', () => {
 
   describe('2. Goal Creation & Validation', () => {
     it('creates a goal with valid payload for Alice', async () => {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/api/v1/goals',
-        headers: { authorization: 'Bearer token-alice' },
-        payload: {
-          title: 'Master TypeScript & Distributed Systems',
-          description: 'Deep dive into concurrent architectures',
-          goal_type: 'learning',
-          priority: 'high',
-          status: 'active',
-          start_date: '2026-10-01T00:00:00.000Z',
-          target_date: '2026-12-31T00:00:00.000Z',
-          desired_outcome: 'Build production-ready distributed services',
-          completion_criteria: 'Pass systems architecture review',
-        },
-      });
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-15T12:00:00.000Z'));
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/v1/goals',
+          headers: { authorization: 'Bearer token-alice' },
+          payload: {
+            title: 'Master TypeScript & Distributed Systems',
+            description: 'Deep dive into concurrent architectures',
+            goal_type: 'learning',
+            priority: 'high',
+            status: 'active',
+            start_date: '2026-10-01T00:00:00.000Z',
+            target_date: '2026-12-31T00:00:00.000Z',
+            desired_outcome: 'Build production-ready distributed services',
+            completion_criteria: 'Pass systems architecture review',
+          },
+        });
 
-      expect(res.statusCode).toBe(201);
-      const body = JSON.parse(res.body);
-      expect(body.success).toBe(true);
-      expect(body.data.title).toBe('Master TypeScript & Distributed Systems');
-      expect(body.data.goal_type).toBe('learning');
-      expect(body.data.priority).toBe('high');
-      expect(body.data.status).toBe('active');
-      expect(body.data.metrics).toBeDefined();
-      expect(body.data.metrics.progressPercentage).toBe(0);
-      expect(body.data.metrics.healthStatus).toBe('on_track');
+        expect(res.statusCode).toBe(201);
+        const body = JSON.parse(res.body);
+        expect(body.success).toBe(true);
+        expect(body.data.title).toBe('Master TypeScript & Distributed Systems');
+        expect(body.data.goal_type).toBe('learning');
+        expect(body.data.priority).toBe('high');
+        expect(body.data.status).toBe('active');
+        expect(body.data.metrics).toBeDefined();
+        expect(body.data.metrics.progressPercentage).toBe(0);
+        expect(body.data.metrics.healthStatus).toBe('on_track');
+
+      } finally {
+        vi.useRealTimers();
+      }
     });
-
     it('rejects goal creation with empty title', async () => {
       const res = await app.inject({
         method: 'POST',

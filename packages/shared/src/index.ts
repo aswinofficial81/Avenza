@@ -60,4 +60,10 @@ export * from './academics.types';
 // Skills & Mastery Domain Types & Schemas
 export * from './skills.types';
 export * from './dsa.types';
+export * from './integrations.types';
+export * from './projects.types';
+export * from './career.types';
+export * from './planner.types';
+export * from './analytics.types';
+export * from './weekly-review.types';
 

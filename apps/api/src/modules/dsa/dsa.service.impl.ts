@@ -96,10 +96,6 @@ export class DsaServiceImpl implements IDsaRepository {
     return this.repository.updateAttempt(userId, attemptId, data);
   }
 
-  async deleteAttempt(userId: string, attemptId: string): Promise<void> {
-    return this.repository.deleteAttempt(userId, attemptId);
-  }
-
   // Topic CRUD
   async createTopic(userId: string, data: CreateDsaTopicInput): Promise<DsaTopicDto> {
     return this.repository.createTopic(userId, data);

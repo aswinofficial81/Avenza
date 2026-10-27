@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fastify from 'fastify';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { registerErrorHandler } from '../../plugins/error-handler';
 import { AcademicsController } from './academics.controller';
 import { InMemoryAcademicsRepository } from './academics.repository';
@@ -290,7 +290,8 @@ describe('Academics Domain & API Routes (/api/v1/...)', () => {
 
   it('generates the Academics Overview answering the core questions', async () => {
     currentAuthUser = mockUserA;
-
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-01T12:00:00.000Z'));
     const overviewRes = await app.inject({
       method: 'GET',
       url: '/api/v1/academics/overview',

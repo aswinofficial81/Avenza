@@ -10,6 +10,7 @@ function createMockContext(overrides?: Partial<IntelligenceContext>): Intelligen
     timezone: 'UTC',
     activeGoals: [{ id: 'goal-1', title: 'DSA Mastery', status: 'active', priority: 1 }],
     activeMilestones: [{ id: 'milestone-1', goalId: 'goal-1', title: 'Trees', status: 'active', target_date: null }],
+    activeProjects: [],
     openTasks: [],
     recentCompletedTasks: [],
     recentFocusSessions: [],

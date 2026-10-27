@@ -221,4 +221,36 @@ describe('TasksPage Component', () => {
 
     expect(screen.getByText('Define an executable unit of work linked to your growth plan.')).toBeInTheDocument();
   });
+
+  it('disables completion toggle for blocked tasks and enables it for unblocked tasks', () => {
+    vi.spyOn(tasksHooks, 'useTasks').mockReturnValue({
+      data: {
+        data: mockTasks,
+        pagination: { page: 1, pageSize: 20, total: 2, totalPages: 1 },
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof tasksHooks.useTasks>);
+
+    renderTasksPage(queryClient);
+
+    // mockTasks[0] is blocked
+    const blockedToggle = screen.getByRole('button', {
+      name: 'Cannot complete: task has incomplete prerequisites',
+    });
+    expect(blockedToggle).toBeDisabled();
+    expect(blockedToggle).toHaveAttribute(
+      'title',
+      'Cannot complete: task has incomplete prerequisites'
+    );
+
+    // mockTasks[1] is not blocked
+    const unblockedToggle = screen.getByRole('button', {
+      name: 'Mark task completed',
+    });
+    expect(unblockedToggle).not.toBeDisabled();
+    expect(unblockedToggle).toHaveAttribute('title', 'Mark task completed');
+  });
 });

@@ -349,6 +349,11 @@ export class DsaRepositoryImpl implements IDsaRepository {
     // Update problem statistics
     await this.updateProblemStatistics(userId, data.problem_id);
 
+    // If attempt is solved, idempotently generate evidence
+    if (row.status === 'solved') {
+      await this.ensureEvidenceForSolvedAttempt(userId, row.id, data.problem_id, data.solve_time_minutes ?? null);
+    }
+
     return this.mapDsaAttemptRow(row);
   }
 
@@ -424,28 +429,12 @@ export class DsaRepositoryImpl implements IDsaRepository {
       }
     }
 
+    // If attempt is solved, idempotently generate evidence
+    if (row.status === 'solved') {
+      await this.ensureEvidenceForSolvedAttempt(userId, row.id, row.problem_id, row.solve_time_minutes);
+    }
+
     return this.mapDsaAttemptRow(row);
-  }
-
-  async deleteAttempt(userId: string, attemptId: string): Promise<void> {
-    // Get the attempt first to know which problem to update
-    const attempt = await this.getAttemptById(userId, attemptId);
-    if (!attempt) {
-      throw new Error('Attempt not found');
-    }
-
-    const { error } = await this.client
-      .from('dsa_attempts')
-      .delete()
-      .eq('id', attemptId)
-      .eq('user_id', userId);
-
-    if (error) {
-      throw new Error(`Failed to delete attempt: ${error.message}`);
-    }
-
-    // Update problem statistics after deletion
-    await this.updateProblemStatistics(userId, attempt.problem_id);
   }
 
   // Topic CRUD
@@ -807,112 +796,211 @@ export class DsaRepositoryImpl implements IDsaRepository {
       reason: string;
     } | null;
   }> {
-    // Get basic counts
-    const [statsResult, weakAreaRows, revisionDueProblem, recentlyFailedProblem, recentUnsolvedProblem] = await Promise.all([
-      // Basic counts
-      this.client
-        .from('dsa_problems')
-        .select('*', { count: 'exact' })
-        .eq('user_id', userId)
-        .then(res => res),
+    const nowIso = new Date().toISOString();
 
-      // Weak areas (topics with most failed attempts)
+    // 1. Fetch user active problems
+    const { data: problems } = await this.client
+      .from('dsa_problems')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active');
+
+    const toIsoStr = (d: unknown): string => (d instanceof Date ? d.toISOString() : String(d));
+    const allProblems = problems || [];
+    const total_problems = allProblems.length;
+    const solved_problems = allProblems.filter(p => p.solved_count > 0).length;
+    const attempted_problems = allProblems.filter(p => p.attempt_count > 0).length;
+    const revision_due_count = allProblems.filter(
+      p => p.next_review_at !== null && toIsoStr(p.next_review_at) <= nowIso
+    ).length;
+
+    // 2. Fetch topics, problem-topic links, and all attempts for user
+    const [topicsRes, linksRes, attemptsRes] = await Promise.all([
       this.client
         .from('dsa_topics')
         .select('id, name')
-        .eq('dsa_topics.user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(5)
-        .then(res => res),
-
-      // Revision due problems
-      this.client
-        .from('dsa_problems')
-        .select('id, title')
         .eq('user_id', userId)
-        .not('next_review_at', 'is', null)
-        .lte('next_review_at', new Date().toISOString())
-        .order('next_review_at', { ascending: true })
-        .limit(1)
-        .then(res => res),
-
-      // Recently failed problems
+        .eq('status', 'active'),
+      this.client
+        .from('dsa_problem_topics')
+        .select('problem_id, topic_id')
+        .eq('user_id', userId),
       this.client
         .from('dsa_attempts')
-        .select('dsa_problems(id, title)')
-        .eq('dsa_attempts.user_id', userId)
-        .eq('dsa_attempts.status', 'failed' as DsaAttemptStatus)
-        .order('dsa_attempts.occurred_at', { ascending: false })
-        .limit(1)
-        .then(res => res),
-
-      // Recent unsolved problems
-      this.client
-        .from('dsa_problems')
-        .select('id, title, solved_count, attempt_count, last_attempt_at')
-        .eq('user_id', userId)
-        .eq('solved_count', 0)
-        .gt('attempt_count', 0)
-        .order('last_attempt_at', { ascending: false })
-        .limit(1)
-        .then(res => res)
+        .select('id, problem_id, status, occurred_at')
+        .eq('user_id', userId),
     ]);
 
-    // Process basic counts
-    const total_problems = statsResult.count ?? 0;
-    const solved_problems = statsResult.data?.filter(p => p.solved_count > 0).length ?? 0;
-    const attempted_problems = statsResult.data?.filter(p => p.attempt_count > 0).length ?? 0;
+    const topics = topicsRes.data || [];
+    const topicLinks = linksRes.data || [];
+    const allAttempts = attemptsRes.data || [];
 
-    // Process revision due count
-    const revisionDueData = await this.client
-      .from('dsa_problems')
-      .select('*', { count: 'exact' })
-      .eq('user_id', userId)
-      .not('next_review_at', 'is', null)
-      .lte('next_review_at', new Date().toISOString());
+    // 3. Compute Weak Areas deterministically
+    // Rule: attempt_count >= 3 AND failure_rate > 0.50 (strictly greater than 50%)
+    const computedWeakAreas: Array<{
+      topic_id: string;
+      topic_name: string;
+      problem_count: number;
+      failure_count: number;
+      failure_rate: number;
+      total_attempts: number;
+      reason: string;
+    }> = [];
 
-    const revision_due_count = revisionDueData.count ?? 0;
+    for (const topic of topics) {
+      const topicProblemIds = topicLinks
+        .filter(l => l.topic_id === topic.id)
+        .map(l => l.problem_id);
 
-    // Process weak areas
-    const weak_areas = (weakAreaRows.data || []).map((row: { id: string; name: string }) => ({
-      topic_id: row.id,
-      topic_name: row.name,
-      problem_count: 0, // Placeholder - would need separate query to compute
-      failure_count: 0, // Placeholder - would need separate query to compute
-      reason: 'Topic needs review' // Placeholder reason
+      const topicAttempts = allAttempts.filter(a => topicProblemIds.includes(a.problem_id));
+      const totalTopicAttempts = topicAttempts.length;
+      const failedTopicAttempts = topicAttempts.filter(a => a.status === 'failed').length;
+      const failureRate = totalTopicAttempts > 0 ? failedTopicAttempts / totalTopicAttempts : 0;
+
+      if (totalTopicAttempts >= 3 && failureRate > 0.5) {
+        computedWeakAreas.push({
+          topic_id: topic.id,
+          topic_name: topic.name,
+          problem_count: topicProblemIds.length,
+          failure_count: failedTopicAttempts,
+          failure_rate: failureRate,
+          total_attempts: totalTopicAttempts,
+          reason: `${failedTopicAttempts}/${totalTopicAttempts} attempts failed (${Math.round(failureRate * 100)}% failure rate)`,
+        });
+      }
+    }
+
+    // Sort weak areas: failure_rate DESC, total_attempts DESC, topic_id ASC (deterministic tie-breaker)
+    computedWeakAreas.sort((a, b) => {
+      if (b.failure_rate !== a.failure_rate) return b.failure_rate - a.failure_rate;
+      if (b.total_attempts !== a.total_attempts) return b.total_attempts - a.total_attempts;
+      return a.topic_id.localeCompare(b.topic_id);
+    });
+
+    const weak_areas = computedWeakAreas.map(w => ({
+      topic_id: w.topic_id,
+      topic_name: w.topic_name,
+      problem_count: w.problem_count,
+      failure_count: w.failure_count,
+      reason: w.reason,
     }));
 
-    // Get recommended problem
-    let recommendedProblem: { id: string; title: string; reason: string } | null = null;
+    // 4. Deterministic Recommendation Engine
+    let recommended_problem: { id: string; title: string; reason: string } | null = null;
 
-    // First check for revision due problems
-    if (revisionDueProblem.data && revisionDueProblem.data.length > 0) {
-      const problem = revisionDueProblem.data[0];
-      if (problem) {
-        recommendedProblem = {
-          id: problem.id,
-          title: problem.title,
-          reason: 'Revision is due.'
+    // Priority 1: Revision Due
+    const revisionDueCandidates = allProblems
+      .filter(p => p.next_review_at !== null && toIsoStr(p.next_review_at) <= nowIso)
+      .sort((a, b) => {
+        const timeDiff = new Date(toIsoStr(a.next_review_at)).getTime() - new Date(toIsoStr(b.next_review_at)).getTime();
+        if (timeDiff !== 0) return timeDiff;
+        return a.id.localeCompare(b.id);
+      });
+
+    if (revisionDueCandidates.length > 0) {
+      const p = revisionDueCandidates[0]!;
+      recommended_problem = {
+        id: p.id,
+        title: p.title,
+        reason: 'Revision is due.',
+      };
+    }
+
+    // Priority 2: Recent Failure (unsolved problems with failures, most recent first)
+    if (!recommended_problem) {
+      const unsolvedProblems = allProblems.filter(p => p.solved_count === 0);
+      const recentFailedCandidates = unsolvedProblems
+        .filter(p => p.failed_count > 0 && p.last_attempt_at !== null)
+        .sort((a, b) => {
+          const recencyDiff = new Date(b.last_attempt_at!).getTime() - new Date(a.last_attempt_at!).getTime();
+          if (recencyDiff !== 0) return recencyDiff;
+          return a.id.localeCompare(b.id);
+        });
+
+      if (recentFailedCandidates.length > 0) {
+        const p = recentFailedCandidates[0]!;
+        recommended_problem = {
+          id: p.id,
+          title: p.title,
+          reason: 'You recently struggled with this problem.',
         };
       }
-    } else if (recentlyFailedProblem.data && recentlyFailedProblem.data.length > 0) {
-      // Check for recently failed problems
-      const problem = recentlyFailedProblem.data[0];
-      if (problem && problem.dsa_problems) {
-        recommendedProblem = {
-          id: problem.dsa_problems.id,
-          title: problem.dsa_problems.title,
-          reason: 'You recently struggled with this problem.'
+    }
+
+    // Priority 3: Weak Area Problems
+    if (!recommended_problem && computedWeakAreas.length > 0) {
+      const unsolvedProblems = allProblems.filter(p => p.solved_count === 0);
+      for (const weakArea of computedWeakAreas) {
+        const weakProblemIds = topicLinks
+          .filter(l => l.topic_id === weakArea.topic_id)
+          .map(l => l.problem_id);
+
+        const candidatesInWeakTopic = unsolvedProblems
+          .filter(p => weakProblemIds.includes(p.id))
+          .sort((a, b) => {
+            const dateDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            if (dateDiff !== 0) return dateDiff;
+            return a.id.localeCompare(b.id);
+          });
+
+        if (candidatesInWeakTopic.length > 0) {
+          const p = candidatesInWeakTopic[0]!;
+          recommended_problem = {
+            id: p.id,
+            title: p.title,
+            reason: `Practice problem in weak topic: ${weakArea.topic_name}.`,
+          };
+          break;
+        }
+      }
+    }
+
+    // Priority 4: Goal Relevance
+    if (!recommended_problem) {
+      const { data: goalLinks } = await this.client
+        .from('dsa_problem_goals')
+        .select('problem_id')
+        .eq('user_id', userId);
+
+      const goalProblemIds = (goalLinks || []).map(g => g.problem_id);
+      const unsolvedGoalProblems = allProblems
+        .filter(p => p.solved_count === 0 && goalProblemIds.includes(p.id))
+        .sort((a, b) => {
+          const dateDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          return a.id.localeCompare(b.id);
+        });
+
+      if (unsolvedGoalProblems.length > 0) {
+        const p = unsolvedGoalProblems[0]!;
+        recommended_problem = {
+          id: p.id,
+          title: p.title,
+          reason: 'Aligns with your active goals.',
         };
       }
-    } else if (recentUnsolvedProblem.data && recentUnsolvedProblem.data.length > 0) {
-      // Fallback to most recently attempted unsolved problem
-      const problem = recentUnsolvedProblem.data[0];
-      if (problem) {
-        recommendedProblem = {
-          id: problem.id,
-          title: problem.title,
-          reason: 'You have attempted this problem but not yet solved it.'
+    }
+
+    // Priority 5: Difficulty Progression / Recency
+    if (!recommended_problem) {
+      const difficultyOrder: Record<string, number> = { easy: 1, medium: 2, hard: 3 };
+      const remainingUnsolved = allProblems
+        .filter(p => p.solved_count === 0)
+        .sort((a, b) => {
+          const diffScoreA = difficultyOrder[a.difficulty] ?? 2;
+          const diffScoreB = difficultyOrder[b.difficulty] ?? 2;
+          if (diffScoreA !== diffScoreB) return diffScoreA - diffScoreB;
+          const dateDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          return a.id.localeCompare(b.id);
+        });
+
+      if (remainingUnsolved.length > 0) {
+        const p = remainingUnsolved[0]!;
+        recommended_problem = {
+          id: p.id,
+          title: p.title,
+          reason: 'Suggested next problem based on difficulty progression.',
         };
       }
     }
@@ -923,8 +1011,56 @@ export class DsaRepositoryImpl implements IDsaRepository {
       attempted_problems,
       revision_due_count,
       weak_areas,
-      recommended_problem: recommendedProblem
+      recommended_problem,
     };
+  }
+
+  private async ensureEvidenceForSolvedAttempt(
+    userId: string,
+    attemptId: string,
+    problemId: string,
+    solveTimeMinutes: number | null
+  ): Promise<void> {
+    // Check if evidence already exists for this attempt
+    const { data: existing } = await this.client
+      .from('evidence')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('source_type', 'dsa_attempt')
+      .eq('source_id', attemptId)
+      .maybeSingle();
+
+    if (existing) {
+      return;
+    }
+
+    // Fetch problem title and difficulty
+    const { data: problem } = await this.client
+      .from('dsa_problems')
+      .select('title, difficulty')
+      .eq('id', problemId)
+      .maybeSingle();
+
+    const title = problem ? `Solved DSA Problem: ${problem.title}` : 'Solved DSA Problem';
+    const description = problem
+      ? `Solved problem "${problem.title}" (${problem.difficulty})${solveTimeMinutes ? ` in ${solveTimeMinutes} minutes` : ''}.`
+      : 'Successfully solved DSA problem.';
+
+    await this.client
+      .from('evidence')
+      .insert({
+        user_id: userId,
+        evidence_type: 'dsa_problem_solved',
+        title,
+        description,
+        source_type: 'dsa_attempt',
+        source_id: attemptId,
+        verification_status: 'verified',
+        evidence_strength: 'high',
+        reliability: 'high',
+        directness: 'direct',
+        occurred_at: new Date().toISOString(),
+      });
   }
 
   // Private helper methods
@@ -1075,16 +1211,19 @@ export class DsaRepositoryImpl implements IDsaRepository {
     const attempt_count = attempts.length;
     const solved_count = attempts.filter(a => a.status === 'solved').length;
     const failed_count = attempts.filter(a => a.status === 'failed').length;
+    const toIsoStr = (d: unknown): string => (d instanceof Date ? d.toISOString() : String(d));
     const last_attempt_at = attempts.length > 0
-      ? attempts.reduce((max, attempt) =>
-          (max === null || attempt.occurred_at > max) ? attempt.occurred_at : max
-        , null as string | null)
+      ? attempts.reduce((max, attempt) => {
+          const occ = toIsoStr(attempt.occurred_at);
+          return (max === null || occ > max) ? occ : max;
+        }, null as string | null)
       : null;
     const solvedAttempts = attempts.filter(a => a.status === 'solved');
     const last_solved_at = solvedAttempts.length > 0
-      ? solvedAttempts.reduce((max, attempt) =>
-          (max === null || attempt.occurred_at > max) ? attempt.occurred_at : max
-        , null as string | null)
+      ? solvedAttempts.reduce((max, attempt) => {
+          const occ = toIsoStr(attempt.occurred_at);
+          return (max === null || occ > max) ? occ : max;
+        }, null as string | null)
       : null;
 
     // Calculate next review date and revision stage based on solved_count
@@ -1139,5 +1278,420 @@ export class DsaRepositoryImpl implements IDsaRepository {
     if (updateError) {
       throw new Error(`Failed to update problem statistics: ${updateError.message}`);
     }
+  }
+}
+
+export class InMemoryDsaRepository implements IDsaRepository {
+  private problems = new Map<string, DsaProblemDto>();
+  private attempts = new Map<string, DsaAttemptDto>();
+  private topics = new Map<string, DsaTopicDto>();
+  private problemTopics: Array<{ problem_id: string; topic_id: string; user_id: string }> = [];
+  private problemSkills: Array<{ problem_id: string; skill_id: string; user_id: string }> = [];
+  private problemGoals: Array<{ problem_id: string; goal_id: string; user_id: string }> = [];
+  private problemTasks: Array<{ problem_id: string; task_id: string; user_id: string }> = [];
+
+  private generateSlug(name: string): string {
+    return name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 120);
+  }
+
+  // Problem CRUD
+  async createProblem(userId: string, data: CreateDsaProblemInput): Promise<DsaProblemDto> {
+    const now = new Date().toISOString();
+    const slug = data.slug && data.slug.trim().length > 0 ? data.slug.trim() : this.generateSlug(data.title);
+    const id = crypto.randomUUID();
+    const problem: DsaProblemDto = {
+      id,
+      user_id: userId,
+      title: data.title,
+      slug,
+      description: data.description ?? null,
+      difficulty: data.difficulty,
+      source: data.source,
+      status: 'active',
+      external_url: data.external_url ?? null,
+      estimated_minutes: data.estimated_minutes ?? null,
+      attempt_count: 0,
+      solved_count: 0,
+      failed_count: 0,
+      last_attempt_at: null,
+      last_solved_at: null,
+      next_review_at: null,
+      revision_count: 0,
+      review_stage: 0,
+      created_at: now,
+      updated_at: now,
+    };
+    this.problems.set(id, problem);
+    return { ...problem };
+  }
+
+  async getProblemById(userId: string, problemId: string): Promise<DsaProblemDto | null> {
+    const p = this.problems.get(problemId);
+    if (!p || p.user_id !== userId) return null;
+    return { ...p };
+  }
+
+  async getProblemBySlug(userId: string, slug: string): Promise<DsaProblemDto | null> {
+    for (const p of this.problems.values()) {
+      if (p.user_id === userId && p.slug === slug) {
+        return { ...p };
+      }
+    }
+    return null;
+  }
+
+  async listProblems(userId: string, query?: DsaProblemQueryInput): Promise<DsaProblemDto[]> {
+    let list = Array.from(this.problems.values()).filter((p) => p.user_id === userId);
+    if (query?.difficulty) list = list.filter((p) => p.difficulty === query.difficulty);
+    if (query?.source) list = list.filter((p) => p.source === query.source);
+    if (query?.status) list = list.filter((p) => p.status === query.status);
+    if (query?.search && query.search.trim()) {
+      const q = query.search.trim().toLowerCase();
+      list = list.filter((p) => p.title.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q));
+    }
+    return list.map((p) => ({ ...p }));
+  }
+
+  async updateProblem(userId: string, problemId: string, data: UpdateDsaProblemInput): Promise<DsaProblemDto> {
+    const existing = this.problems.get(problemId);
+    if (!existing || existing.user_id !== userId) {
+      throw new Error('Problem not found');
+    }
+    const updated: DsaProblemDto = {
+      ...existing,
+      ...(data.title !== undefined ? { title: data.title } : {}),
+      ...(data.description !== undefined ? { description: data.description ?? null } : {}),
+      ...(data.difficulty !== undefined ? { difficulty: data.difficulty } : {}),
+      ...(data.source !== undefined ? { source: data.source } : {}),
+      ...(data.external_url !== undefined ? { external_url: data.external_url ?? null } : {}),
+      ...(data.estimated_minutes !== undefined ? { estimated_minutes: data.estimated_minutes ?? null } : {}),
+      ...(data.status !== undefined ? { status: data.status } : {}),
+      updated_at: new Date().toISOString(),
+    };
+    this.problems.set(problemId, updated);
+    return { ...updated };
+  }
+
+  async archiveProblem(userId: string, problemId: string): Promise<DsaProblemDto> {
+    return this.updateProblem(userId, problemId, { status: 'archived' });
+  }
+
+  async deleteProblem(userId: string, problemId: string): Promise<void> {
+    const existing = this.problems.get(problemId);
+    if (!existing || existing.user_id !== userId) {
+      throw new Error('Problem not found');
+    }
+    this.problems.delete(problemId);
+  }
+
+  // Attempt CRUD
+  async createAttempt(userId: string, data: CreateDsaAttemptInput): Promise<DsaAttemptDto> {
+    const problem = this.problems.get(data.problem_id);
+    if (!problem || problem.user_id !== userId) {
+      throw new Error('Problem not found');
+    }
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
+    const attempt: DsaAttemptDto = {
+      id,
+      user_id: userId,
+      problem_id: data.problem_id,
+      status: data.status,
+      started_at: data.started_at ?? null,
+      submitted_at: data.submitted_at ?? null,
+      occurred_at: data.occurred_at ?? now,
+      recorded_at: now,
+      solve_time_minutes: data.solve_time_minutes ?? null,
+      language: data.language ?? null,
+      notes: data.notes ?? null,
+      created_at: now,
+      updated_at: now,
+    };
+    this.attempts.set(id, attempt);
+    await this.updateProblemStatistics(userId, data.problem_id);
+    return { ...attempt };
+  }
+
+  async getAttemptById(userId: string, attemptId: string): Promise<DsaAttemptDto | null> {
+    const a = this.attempts.get(attemptId);
+    if (!a || a.user_id !== userId) return null;
+    return { ...a };
+  }
+
+  async listAttemptsByProblem(userId: string, problemId: string): Promise<DsaAttemptDto[]> {
+    return Array.from(this.attempts.values())
+      .filter((a) => a.user_id === userId && a.problem_id === problemId)
+      .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
+      .map((a) => ({ ...a }));
+  }
+
+  async updateAttempt(userId: string, attemptId: string, data: UpdateDsaAttemptInput): Promise<DsaAttemptDto> {
+    const existing = this.attempts.get(attemptId);
+    if (!existing || existing.user_id !== userId) {
+      throw new Error('Attempt not found');
+    }
+    const updated: DsaAttemptDto = {
+      ...existing,
+      ...(data.status !== undefined ? { status: data.status } : {}),
+      ...(data.started_at !== undefined ? { started_at: data.started_at ?? null } : {}),
+      ...(data.submitted_at !== undefined ? { submitted_at: data.submitted_at ?? null } : {}),
+      ...(data.solve_time_minutes !== undefined ? { solve_time_minutes: data.solve_time_minutes ?? null } : {}),
+      ...(data.language !== undefined ? { language: data.language ?? null } : {}),
+      ...(data.notes !== undefined ? { notes: data.notes ?? null } : {}),
+      updated_at: new Date().toISOString(),
+    };
+    this.attempts.set(attemptId, updated);
+    if (data.status !== undefined) {
+      await this.updateProblemStatistics(userId, existing.problem_id);
+    }
+    return { ...updated };
+  }
+
+  private async updateProblemStatistics(userId: string, problemId: string): Promise<void> {
+    const problem = this.problems.get(problemId);
+    if (!problem || problem.user_id !== userId) return;
+
+    const attempts = Array.from(this.attempts.values()).filter(
+      (a) => a.user_id === userId && a.problem_id === problemId
+    );
+
+    const attempt_count = attempts.length;
+    const solved_count = attempts.filter((a) => a.status === 'solved').length;
+    const failed_count = attempts.filter((a) => a.status === 'failed').length;
+
+    let last_attempt_at: string | null = null;
+    for (const a of attempts) {
+      if (!last_attempt_at || a.occurred_at > last_attempt_at) {
+        last_attempt_at = a.occurred_at;
+      }
+    }
+
+    const solvedAttempts = attempts.filter((a) => a.status === 'solved');
+    let last_solved_at: string | null = null;
+    for (const a of solvedAttempts) {
+      if (!last_solved_at || a.occurred_at > last_solved_at) {
+        last_solved_at = a.occurred_at;
+      }
+    }
+
+    let next_review_at: Date | null = null;
+    let revision_count = 0;
+    let review_stage = 0;
+
+    if (solved_count > 0) {
+      revision_count = solved_count;
+      if (revision_count === 1) review_stage = 1;
+      else if (revision_count === 2) review_stage = 2;
+      else if (revision_count >= 3) review_stage = 3;
+
+      if (last_solved_at) {
+        const lastSolved = new Date(last_solved_at);
+        let daysToAdd = 0;
+        switch (review_stage) {
+          case 1: daysToAdd = 2; break;
+          case 2: daysToAdd = 7; break;
+          case 3: daysToAdd = 21; break;
+        }
+        next_review_at = new Date(lastSolved.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+      }
+    }
+
+    this.problems.set(problemId, {
+      ...problem,
+      attempt_count,
+      solved_count,
+      failed_count,
+      last_attempt_at,
+      last_solved_at,
+      next_review_at: next_review_at ? next_review_at.toISOString() : null,
+      revision_count,
+      review_stage: review_stage as DsaRevisionStage,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  // Problem detail
+  async getProblemDetail(userId: string, problemId: string): Promise<DsaProblemDetailDto | null> {
+    const problem = await this.getProblemById(userId, problemId);
+    if (!problem) return null;
+
+    const topicIds = this.problemTopics
+      .filter((pt) => pt.user_id === userId && pt.problem_id === problemId)
+      .map((pt) => pt.topic_id);
+    const topics = Array.from(this.topics.values()).filter((t) => topicIds.includes(t.id));
+
+    const recentAttempts = await this.listAttemptsByProblem(userId, problemId);
+
+    return {
+      problem,
+      topics,
+      skills: [],
+      goals: [],
+      tasks: [],
+      recent_attempts: recentAttempts.slice(0, 5),
+    };
+  }
+
+  // Topic CRUD
+  async createTopic(userId: string, data: CreateDsaTopicInput): Promise<DsaTopicDto> {
+    const now = new Date().toISOString();
+    const slug = data.slug && data.slug.trim().length > 0 ? data.slug.trim() : this.generateSlug(data.name);
+    const id = crypto.randomUUID();
+    const topic: DsaTopicDto = {
+      id,
+      user_id: userId,
+      parent_topic_id: data.parent_topic_id ?? null,
+      name: data.name,
+      slug,
+      status: 'active',
+      created_at: now,
+      updated_at: now,
+      parent_topic: null,
+      children: [],
+    };
+    this.topics.set(id, topic);
+    return { ...topic };
+  }
+
+  async getTopicById(userId: string, topicId: string): Promise<DsaTopicDto | null> {
+    const t = this.topics.get(topicId);
+    if (!t || t.user_id !== userId) return null;
+    return { ...t };
+  }
+
+  async getTopicBySlug(userId: string, slug: string): Promise<DsaTopicDto | null> {
+    for (const t of this.topics.values()) {
+      if (t.user_id === userId && t.slug === slug) {
+        return { ...t };
+      }
+    }
+    return null;
+  }
+
+  async listTopics(userId: string, query?: { status?: 'active' | 'archived'; parentTopicId?: string | null; search?: string }): Promise<DsaTopicDto[]> {
+    let list = Array.from(this.topics.values()).filter((t) => t.user_id === userId);
+    if (query?.status) list = list.filter((t) => t.status === query.status);
+    if (query?.parentTopicId !== undefined) list = list.filter((t) => t.parent_topic_id === query.parentTopicId);
+    if (query?.search && query.search.trim()) {
+      const q = query.search.trim().toLowerCase();
+      list = list.filter((t) => t.name.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q));
+    }
+    return list.map((t) => ({ ...t }));
+  }
+
+  async updateTopic(userId: string, topicId: string, data: UpdateDsaTopicInput): Promise<DsaTopicDto> {
+    const existing = this.topics.get(topicId);
+    if (!existing || existing.user_id !== userId) {
+      throw new Error('Topic not found');
+    }
+    const updated: DsaTopicDto = {
+      ...existing,
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.parent_topic_id !== undefined ? { parent_topic_id: data.parent_topic_id ?? null } : {}),
+      ...(data.status !== undefined ? { status: data.status } : {}),
+      updated_at: new Date().toISOString(),
+    };
+    this.topics.set(topicId, updated);
+    return { ...updated };
+  }
+
+  async archiveTopic(userId: string, topicId: string): Promise<DsaTopicDto> {
+    return this.updateTopic(userId, topicId, { status: 'archived' });
+  }
+
+  async deleteTopic(userId: string, topicId: string): Promise<void> {
+    const existing = this.topics.get(topicId);
+    if (!existing || existing.user_id !== userId) {
+      throw new Error('Topic not found');
+    }
+    this.topics.delete(topicId);
+  }
+
+  // Relationships
+  async linkProblemTopic(userId: string, data: LinkDsaProblemTopicInput): Promise<void> {
+    if (!this.problemTopics.some((pt) => pt.user_id === userId && pt.problem_id === data.problem_id && pt.topic_id === data.topic_id)) {
+      this.problemTopics.push({ user_id: userId, problem_id: data.problem_id, topic_id: data.topic_id });
+    }
+  }
+
+  async unlinkProblemTopic(userId: string, problemId: string, topicId: string): Promise<void> {
+    this.problemTopics = this.problemTopics.filter(
+      (pt) => !(pt.user_id === userId && pt.problem_id === problemId && pt.topic_id === topicId)
+    );
+  }
+
+  async linkProblemSkill(userId: string, data: LinkDsaProblemSkillInput): Promise<void> {
+    if (!this.problemSkills.some((ps) => ps.user_id === userId && ps.problem_id === data.problem_id && ps.skill_id === data.skill_id)) {
+      this.problemSkills.push({ user_id: userId, problem_id: data.problem_id, skill_id: data.skill_id });
+    }
+  }
+
+  async unlinkProblemSkill(userId: string, problemId: string, skillId: string): Promise<void> {
+    this.problemSkills = this.problemSkills.filter(
+      (ps) => !(ps.user_id === userId && ps.problem_id === problemId && ps.skill_id === skillId)
+    );
+  }
+
+  async linkProblemGoal(userId: string, data: LinkDsaProblemGoalInput): Promise<void> {
+    if (!this.problemGoals.some((pg) => pg.user_id === userId && pg.problem_id === data.problem_id && pg.goal_id === data.goal_id)) {
+      this.problemGoals.push({ user_id: userId, problem_id: data.problem_id, goal_id: data.goal_id });
+    }
+  }
+
+  async unlinkProblemGoal(userId: string, problemId: string, goalId: string): Promise<void> {
+    this.problemGoals = this.problemGoals.filter(
+      (pg) => !(pg.user_id === userId && pg.problem_id === problemId && pg.goal_id === goalId)
+    );
+  }
+
+  async linkProblemTask(userId: string, data: LinkDsaProblemTaskInput): Promise<void> {
+    if (!this.problemTasks.some((pt) => pt.user_id === userId && pt.problem_id === data.problem_id && pt.task_id === data.task_id)) {
+      this.problemTasks.push({ user_id: userId, problem_id: data.problem_id, task_id: data.task_id });
+    }
+  }
+
+  async unlinkProblemTask(userId: string, problemId: string, taskId: string): Promise<void> {
+    this.problemTasks = this.problemTasks.filter(
+      (pt) => !(pt.user_id === userId && pt.problem_id === problemId && pt.task_id === taskId)
+    );
+  }
+
+  async getOverview(userId: string): Promise<{
+    total_problems: number;
+    solved_problems: number;
+    attempted_problems: number;
+    revision_due_count: number;
+    weak_areas: Array<{
+      topic_id: string;
+      topic_name: string;
+      problem_count: number;
+      failure_count: number;
+      reason: string;
+    }>;
+    recommended_problem: {
+      id: string;
+      title: string;
+      reason: string;
+    } | null;
+  }> {
+    const problems = Array.from(this.problems.values()).filter((p) => p.user_id === userId);
+    const total_problems = problems.length;
+    const solved_problems = problems.filter((p) => p.solved_count > 0).length;
+    const attempted_problems = problems.filter((p) => p.attempt_count > 0).length;
+    const revision_due_count = problems.filter((p) => p.next_review_at && new Date(p.next_review_at) <= new Date()).length;
+
+    return {
+      total_problems,
+      solved_problems,
+      attempted_problems,
+      revision_due_count,
+      weak_areas: [],
+      recommended_problem: null,
+    };
   }
 }

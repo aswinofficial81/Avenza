@@ -9,13 +9,24 @@ export class ApiClient {
     private readonly getToken?: () => Promise<string | null>,
     baseUrl?: string
   ) {
-    this.baseUrl = baseUrl || env.API_BASE_URL;
+    const raw = baseUrl || env.API_BASE_URL;
+    if (!raw || typeof raw !== 'string') {
+      throw new Error('VITE_API_BASE_URL is missing or invalid.');
+    }
+    try {
+      const parsed = new URL(raw);
+      if (!parsed.protocol.startsWith('http')) {
+        throw new Error('VITE_API_BASE_URL is missing or invalid.');
+      }
+    } catch {
+      throw new Error('VITE_API_BASE_URL is missing or invalid.');
+    }
+    this.baseUrl = raw.replace(/\/+$/, '');
   }
 
   private async request<T>(
     endpoint: string,
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
-    body?: unknown,
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown,
     options: { token?: string } = {}
   ): Promise<T> {
     const token = options.token || (this.getToken ? await this.getToken() : null);
@@ -28,9 +39,17 @@ export class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    const cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    let targetUrl: string;
+    try {
+      targetUrl = new URL(cleanPath, this.baseUrl).toString();
+    } catch {
+      throw new Error('VITE_API_BASE_URL is missing or invalid.');
+    }
+
     let response: Response;
     try {
-      response = await fetch(`${this.baseUrl}${endpoint}`, {
+      response = await fetch(targetUrl, {
         method,
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -71,13 +90,20 @@ export class ApiClient {
   async post<T>(endpoint: string, body?: unknown, options: { token?: string } = {}): Promise<T> {
     return this.request<T>(endpoint, 'POST', body, options);
   }
+  async put<T>(
+    endpoint: string,
+    body?: unknown,
+    options: { token?: string } = {},
+  ): Promise<T> {
+    return this.request<T>(endpoint, 'PUT', body, options);
+  }
 
   async patch<T>(endpoint: string, body?: unknown, options: { token?: string } = {}): Promise<T> {
     return this.request<T>(endpoint, 'PATCH', body, options);
   }
 
-  async delete<T>(endpoint: string, options: { token?: string } = {}): Promise<T> {
-    return this.request<T>(endpoint, 'DELETE', undefined, options);
+  async delete<T>(endpoint: string, body?: unknown, options: { token?: string } = {}): Promise<T> {
+    return this.request<T>(endpoint, 'DELETE', body, options);
   }
 
   async getMe(token?: string): Promise<AuthMeResponse> {

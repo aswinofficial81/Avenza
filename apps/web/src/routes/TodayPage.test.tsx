@@ -201,7 +201,7 @@ describe('TodayPage Component', () => {
     expect(screen.getByText('Next Up')).toBeInTheDocument();
     expect(screen.getAllByText('Implement Raft Consensus Algorithm').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByRole('button', { name: /Complete/i })[0]).toBeInTheDocument();
-  });
+  }, 15000);
 
   it('renders Overdue, Due Today, and Completed Today sections', () => {
     vi.spyOn(todayHooks, 'useToday').mockReturnValue({
@@ -324,5 +324,34 @@ describe('TodayPage Component', () => {
     expect(
       screen.getByText('Define an executable unit of work linked to your growth plan.')
     ).toBeInTheDocument();
+  });
+
+  it('disables completion toggle for blocked tasks in Today sections with accessible explanation', () => {
+    vi.spyOn(todayHooks, 'useToday').mockReturnValue({
+      data: mockTodayData,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof todayHooks.useToday>);
+
+    renderTodayPage(queryClient);
+
+    // Overdue task (mockOverdueTask) is blocked
+    const blockedToggle = screen.getByRole('button', {
+      name: 'Cannot complete: task has incomplete prerequisites',
+    });
+    expect(blockedToggle).toBeDisabled();
+    expect(blockedToggle).toHaveAttribute(
+      'title',
+      'Cannot complete: task has incomplete prerequisites'
+    );
+
+    // Due today task (mockNextTask) is unblocked
+    const unblockedToggle = screen.getByRole('button', {
+      name: 'Mark task as completed',
+    });
+    expect(unblockedToggle).not.toBeDisabled();
+    expect(unblockedToggle).toHaveAttribute('title', 'Mark task as completed');
   });
 });

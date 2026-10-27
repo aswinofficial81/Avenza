@@ -21,6 +21,36 @@ export function createProfileRoutes(opts: ProfileRoutesOptions = {}): FastifyPlu
         return controller.getMe(request, reply);
       }
     );
+
+    fastify.delete(
+      '/api/v1/auth/me',
+      {
+        preHandler: [authHook],
+      },
+      async (request, reply) => {
+        return controller.deleteMe(request, reply);
+      }
+    );
+
+    fastify.get(
+      '/api/v1/account/export',
+      {
+        preHandler: [authHook],
+      },
+      async (request, reply) => {
+        return controller.exportAccountData(request, reply);
+      }
+    );
+
+    fastify.get(
+      '/api/v1/auth/export',
+      {
+        preHandler: [authHook],
+      },
+      async (request, reply) => {
+        return controller.exportAccountData(request, reply);
+      }
+    );
   };
 }
 

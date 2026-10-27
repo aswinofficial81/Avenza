@@ -36,6 +36,8 @@ export interface FocusSessionTaskSummary {
   task_type: TaskType;
   goal_title?: string | null;
   milestone_title?: string | null;
+  project_title?: string | null;
+  project_milestone_title?: string | null;
 }
 
 export interface FocusSessionDto {

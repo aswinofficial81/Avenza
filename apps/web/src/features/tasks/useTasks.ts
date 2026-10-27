@@ -80,6 +80,8 @@ export function useCreateTask() {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['today'] });
       queryClient.invalidateQueries({ queryKey: ['intelligence'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['career'] });
     },
   });
 }
@@ -101,6 +103,8 @@ export function useUpdateTask(taskId: string) {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['today'] });
       queryClient.invalidateQueries({ queryKey: ['intelligence'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['career'] });
     },
   });
 }
@@ -120,6 +124,8 @@ export function useDeleteTask() {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['today'] });
       queryClient.invalidateQueries({ queryKey: ['intelligence'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['career'] });
     },
   });
 }

@@ -5,58 +5,58 @@
 @layer base {
   :root {
     color-scheme: light;
-    --background: #F5EFEB;
-    --foreground: #172536;
+    --background: #F7FAFC;
+    --foreground: #111827;
     --surface: #FFFFFF;
-    --surface-2: #EAE3DC;
-    --surface-muted: #F0EAE4;
-    --border: #C8D9E6;
-    --border-subtle: #DEE8F0;
-    --primary: #2F4156;
+    --surface-2: #F0F7F7;
+    --surface-muted: #E7F0F0;
+    --border: #E1EAE9;
+    --border-subtle: #EDF3F2;
+    --primary: #064E4A;
     --primary-foreground: #FFFFFF;
-    --secondary: #567C8D;
+    --secondary: #0F766E;
     --secondary-foreground: #FFFFFF;
-    --accent: #567C8D;
+    --accent: #14B8A6;
     --accent-foreground: #FFFFFF;
-    --muted: #E2DCD5;
-    --muted-foreground: #567C8D;
-    --success: #2A7B54;
+    --muted: #E1EAE9;
+    --muted-foreground: #526477;
+    --success: #10B981;
     --success-foreground: #FFFFFF;
-    --warning: #B26A18;
+    --warning: #F59E0B;
     --warning-foreground: #FFFFFF;
-    --danger: #BA3A3A;
+    --danger: #F87171;
     --danger-foreground: #FFFFFF;
-    --info: #2F6182;
+    --info: #3B82F6;
     --info-foreground: #FFFFFF;
-    --focus-ring: #567C8D;
+    --focus-ring: #14B8A6;
   }
 
   .dark {
     color-scheme: dark;
-    --background: #101820;
-    --foreground: #F5F7FA;
-    --surface: #172330;
-    --surface-2: #20303D;
-    --surface-muted: #131E2A;
-    --border: #283C4F;
-    --border-subtle: #1C2B38;
-    --primary: #6F9BAD;
-    --primary-foreground: #101820;
-    --secondary: #20303D;
-    --secondary-foreground: #F5F7FA;
-    --accent: #C8D9E6;
-    --accent-foreground: #101820;
-    --muted: #20303D;
-    --muted-foreground: #AAB8C2;
-    --success: #3E9A68;
-    --success-foreground: #101820;
-    --warning: #DE9B35;
-    --warning-foreground: #101820;
-    --danger: #E05656;
+    --background: #050B0B;
+    --foreground: #F5FAFA;
+    --surface: #0B1515;
+    --surface-2: #142827;
+    --surface-muted: #0E1B1A;
+    --border: #203634;
+    --border-subtle: #142624;
+    --primary: #14B8A6;
+    --primary-foreground: #050B0B;
+    --secondary: #142827;
+    --secondary-foreground: #2DE2C5;
+    --accent: #2DE2C5;
+    --accent-foreground: #050B0B;
+    --muted: #142827;
+    --muted-foreground: #A2B7B5;
+    --success: #34D399;
+    --success-foreground: #050B0B;
+    --warning: #FBBF24;
+    --warning-foreground: #050B0B;
+    --danger: #FB7185;
     --danger-foreground: #FFFFFF;
-    --info: #6F9BAD;
-    --info-foreground: #101820;
-    --focus-ring: #6F9BAD;
+    --info: #60A5FA;
+    --info-foreground: #050B0B;
+    --focus-ring: #2DE2C5;
   }
 
   * {
@@ -81,6 +81,7 @@
 
   /* Restrained transitions */
   @media (prefers-reduced-motion: reduce) {
+
     *,
     ::before,
     ::after {

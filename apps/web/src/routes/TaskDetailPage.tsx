@@ -48,6 +48,7 @@ export const TaskDetailPage: React.FC = () => {
 
   const handleStatusTransition = async (newStatus: TaskStatus) => {
     if (!task) return;
+    if (newStatus === 'completed' && task.is_blocked) return;
     try {
       await updateTaskMutation.mutateAsync({ status: newStatus });
       refetch();
@@ -58,6 +59,7 @@ export const TaskDetailPage: React.FC = () => {
 
   const handleToggleComplete = async (t: typeof task) => {
     if (!t) return;
+    if (t.status !== 'completed' && t.is_blocked) return;
     const newStatus: TaskStatus = t.status === 'completed' ? 'inbox' : 'completed';
     await handleStatusTransition(newStatus);
   };
@@ -164,6 +166,21 @@ export const TaskDetailPage: React.FC = () => {
               size="sm"
               onClick={() => handleToggleComplete(task)}
               isLoading={updateTaskMutation.isPending}
+              disabled={!isCompleted && task.is_blocked}
+              title={
+                !isCompleted && task.is_blocked
+                  ? 'Cannot complete: task has incomplete prerequisites'
+                  : isCompleted
+                  ? 'Reopen Task'
+                  : 'Mark Completed'
+              }
+              aria-label={
+                !isCompleted && task.is_blocked
+                  ? 'Cannot complete: task has incomplete prerequisites'
+                  : isCompleted
+                  ? 'Reopen Task'
+                  : 'Mark Completed'
+              }
               className="flex items-center gap-1.5"
             >
               {isCompleted ? (
@@ -178,6 +195,15 @@ export const TaskDetailPage: React.FC = () => {
                 </>
               )}
             </Button>
+
+            {!isCompleted && task.is_blocked && (
+              <span
+                className="text-xs text-amber-600 dark:text-amber-400 font-medium"
+                role="status"
+              >
+                Cannot complete: task has incomplete prerequisites
+              </span>
+            )}
 
             {/* Start Focus / In Focus */}
             {!isCompleted &&

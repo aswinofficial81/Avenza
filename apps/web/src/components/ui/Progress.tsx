@@ -42,10 +42,10 @@ export const Progress: React.FC<ProgressProps> = ({
         )}
       >
         {isIndeterminate ? (
-          <div className="h-full bg-primary rounded-full w-1/3 animate-[pulse_1.5s_ease-in-out_infinite]" />
+          <div className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full w-1/3 animate-[pulse_1.5s_ease-in-out_infinite]" />
         ) : (
           <div
-            className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+            className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 dark:from-teal-400 dark:to-emerald-300 rounded-full transition-all duration-300 ease-out"
             style={{ width: `${clampedValue}%` }}
           />
         )}

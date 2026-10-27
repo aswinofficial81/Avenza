@@ -25,6 +25,13 @@ export const NextActionReasonCodeSchema = z.enum([
   'stale_task',
   'in_progress_continuation',
   'no_actionable_tasks',
+  'project_at_risk',
+  'project_milestone_next',
+  'career_interview_imminent',
+  'career_assessment_due',
+  'career_follow_up_due',
+  'career_required_skill_gap',
+  'career_project_prep',
 ]);
 
 export type NextActionReasonCode = z.infer<typeof NextActionReasonCodeSchema>;
@@ -41,6 +48,8 @@ export const ScoreBreakdownSchema = z.object({
   scheduleSignal: z.number(),
   continuationSignal: z.number(),
   stalenessSignal: z.number(),
+  projectSignal: z.number().optional(),
+  careerSignal: z.number().optional(),
   totalScore: z.number(),
 });
 
@@ -61,6 +70,17 @@ export const NextActionItemSchema = z.object({
   dueAt: z.string().nullable().optional(),
   scheduledDate: z.string().nullable().optional(),
   estimatedMinutes: z.number().nullable().optional(),
+  projectId: z.string().uuid().nullable().optional(),
+  projectTitle: z.string().nullable().optional(),
+  projectHealth: z.enum(['unknown', 'on_track', 'at_risk', 'completed']).nullable().optional(),
+  projectProgress: z.number().nullable().optional(),
+  projectMilestoneId: z.string().uuid().nullable().optional(),
+  projectMilestoneTitle: z.string().nullable().optional(),
+  projectMilestoneTargetDate: z.string().nullable().optional(),
+  applicationId: z.string().uuid().nullable().optional(),
+  companyName: z.string().nullable().optional(),
+  careerRoundType: z.string().nullable().optional(),
+  careerSkillName: z.string().nullable().optional(),
 });
 
 export type NextActionItem = z.infer<typeof NextActionItemSchema>;

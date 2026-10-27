@@ -64,6 +64,17 @@ export const TodayPage: React.FC = () => {
   });
 
   const handleComplete = (taskId: string) => {
+    const allTasks = [
+      ...(data?.dueToday || []),
+      ...(data?.overdue || []),
+      ...(data?.scheduledToday || []),
+      ...(data?.upcoming || []),
+      ...(data?.next ? [data.next] : []),
+    ];
+    const target = allTasks.find((t) => t.id === taskId);
+    if (target?.is_blocked && target.status !== 'completed') {
+      return;
+    }
     statusMutation.mutate({ taskId, status: 'completed' });
   };
 

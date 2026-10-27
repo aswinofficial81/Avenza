@@ -322,10 +322,6 @@ export const useDsaApi = () => {
         updated_at: string;
       }>(`/dsa/attempts/${id}`, data),
 
-    deleteAttempt: (id: string) =>
-      baseApi.delete(`/dsa/attempts/${id}`),
-
-
     // Topic methods
     listTopics: (params?: {
       status?: 'active' | 'archived';

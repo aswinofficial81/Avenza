@@ -12,6 +12,8 @@ import type { ITasksRepository } from '../tasks/tasks.types';
 import { defaultTasksRepository } from '../tasks/tasks.repository';
 import type { IGoalsRepository } from '../goals/goals.types';
 import { defaultGoalsRepository } from '../goals/goals.repository';
+import type { IProjectsRepository } from '../projects/projects.repository';
+import { defaultProjectsRepository } from '../projects/projects.repository';
 import type {
   FocusSessionRow,
   IFocusRepository,
@@ -34,7 +36,8 @@ export class FocusService implements IFocusService {
   constructor(
     private readonly focusRepository: IFocusRepository = defaultFocusRepository,
     private readonly tasksRepository: ITasksRepository = defaultTasksRepository,
-    private readonly goalsRepository: IGoalsRepository = defaultGoalsRepository
+    private readonly goalsRepository: IGoalsRepository = defaultGoalsRepository,
+    private readonly projectsRepository: IProjectsRepository = defaultProjectsRepository
   ) {}
 
   private async enrichSessionWithTask(
@@ -52,6 +55,21 @@ export class FocusService implements IFocusService {
           goalTitle = goal?.title || null;
         }
 
+        let projectTitle: string | null = null;
+        let projectMilestoneTitle: string | null = null;
+        if (task.project_id) {
+          const proj = await this.projectsRepository.findProjectById(task.project_id, userId);
+          projectTitle = proj?.title || null;
+          if (task.project_milestone_id) {
+            const ms = await this.projectsRepository.findMilestoneById(
+              task.project_milestone_id,
+              task.project_id,
+              userId
+            );
+            projectMilestoneTitle = ms?.title || null;
+          }
+        }
+
         taskSummary = {
           id: task.id,
           title: task.title,
@@ -59,6 +77,8 @@ export class FocusService implements IFocusService {
           priority: task.priority as TaskPriority,
           task_type: task.task_type as TaskType,
           goal_title: goalTitle,
+          project_title: projectTitle,
+          project_milestone_title: projectMilestoneTitle,
         };
       }
     }

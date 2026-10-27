@@ -43,10 +43,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const sizeStyles: Record<ButtonSize, string> = {
-      sm: 'h-8 px-2.5 text-xs rounded-sm gap-1.5',
-      md: 'h-9 px-3.5 text-sm rounded gap-2',
-      lg: 'h-10 px-5 text-base rounded-lg gap-2.5',
-      icon: 'h-9 w-9 p-0 rounded flex items-center justify-center',
+      sm: 'h-8 px-3 text-xs rounded-lg gap-1.5',
+      md: 'h-9 px-4 text-sm rounded-xl gap-2',
+      lg: 'h-11 px-5 text-base rounded-xl gap-2.5',
+      icon: 'h-9 w-9 p-0 rounded-xl flex items-center justify-center',
     };
 
     const isDisabled = disabled || isLoading;

@@ -102,6 +102,7 @@ export const TasksPage: React.FC = () => {
   const hasActiveFilters = Boolean(search || status || priority || taskType || goalId || blockedParam !== null);
 
   const handleToggleComplete = async (task: TaskDto) => {
+    if (task.status !== 'completed' && task.is_blocked) return;
     const newStatus: TaskStatus = task.status === 'completed' ? 'inbox' : 'completed';
     try {
       await updateTaskMutation.mutateAsync({ status: newStatus });
@@ -151,7 +152,7 @@ export const TasksPage: React.FC = () => {
       </div>
 
       {/* 2. Filter & Controls Toolbar */}
-      <div className="bg-surface border border-border rounded-lg p-3 space-y-3">
+      <div className="bg-surface border border-border rounded-2xl p-3.5 space-y-3 shadow-sm">
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
           {/* Search */}
           <div className="relative flex-1">
@@ -161,7 +162,7 @@ export const TasksPage: React.FC = () => {
               placeholder="Search tasks by title..."
               value={search}
               onChange={(e) => updateFilter('search', e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
 
@@ -172,7 +173,7 @@ export const TasksPage: React.FC = () => {
               aria-label="Filter by Status"
               value={status || 'all'}
               onChange={(e) => updateFilter('status', e.target.value)}
-              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="all">All Statuses</option>
               <option value="inbox">Inbox</option>
@@ -190,7 +191,7 @@ export const TasksPage: React.FC = () => {
               aria-label="Filter by Priority"
               value={priority || 'all'}
               onChange={(e) => updateFilter('priority', e.target.value)}
-              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="all">All Priorities</option>
               <option value="critical">Critical</option>
@@ -204,7 +205,7 @@ export const TasksPage: React.FC = () => {
               aria-label="Filter by Type"
               value={taskType || 'all'}
               onChange={(e) => updateFilter('task_type', e.target.value)}
-              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="all">All Types</option>
               <option value="study">Study</option>
@@ -225,7 +226,7 @@ export const TasksPage: React.FC = () => {
               aria-label="Filter by Goal"
               value={goalId || 'all'}
               onChange={(e) => updateFilter('goal_id', e.target.value)}
-              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[160px] truncate"
+              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[160px] truncate"
             >
               <option value="all">All Goals</option>
               {goals.map((g) => (
@@ -240,7 +241,7 @@ export const TasksPage: React.FC = () => {
               aria-label="Filter by Blocked Status"
               value={blockedParam !== null ? blockedParam : 'all'}
               onChange={(e) => updateFilter('blocked', e.target.value)}
-              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="all">All Dependencies</option>
               <option value="true">Blocked Only</option>
@@ -262,7 +263,7 @@ export const TasksPage: React.FC = () => {
                   setSearchParams(next, { replace: true });
                 }
               }}
-              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="px-2.5 py-1.5 text-xs bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="created_at-desc">Newest First</option>
               <option value="created_at-asc">Oldest First</option>
@@ -352,18 +353,35 @@ export const TasksPage: React.FC = () => {
               {/* Left Column: Complete Toggle, Title & Meta */}
               <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
                 {/* Complete Toggle */}
-                <button
-                  type="button"
-                  onClick={() => handleToggleComplete(task)}
-                  className="mt-0.5 sm:mt-0 flex-shrink-0 text-muted-foreground hover:text-emerald-500 transition-colors focus:outline-none"
-                  title={task.status === 'completed' ? 'Reopen task' : 'Mark task completed'}
-                >
-                  {task.status === 'completed' ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
-                  ) : (
-                    <Circle className="w-5 h-5" />
-                  )}
-                </button>
+                {(() => {
+                  const isBlocked = task.status !== 'completed' && task.is_blocked;
+                  const label = isBlocked
+                    ? 'Cannot complete: task has incomplete prerequisites'
+                    : task.status === 'completed'
+                    ? 'Reopen task'
+                    : 'Mark task completed';
+
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleComplete(task)}
+                      disabled={isBlocked}
+                      aria-label={label}
+                      title={label}
+                      className={`mt-0.5 sm:mt-0 flex-shrink-0 transition-colors focus:outline-none ${
+                        isBlocked
+                          ? 'opacity-40 cursor-not-allowed text-muted-foreground'
+                          : 'text-muted-foreground hover:text-emerald-500'
+                      }`}
+                    >
+                      {task.status === 'completed' ? (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
+                      ) : (
+                        <Circle className="w-5 h-5" />
+                      )}
+                    </button>
+                  );
+                })()}
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">

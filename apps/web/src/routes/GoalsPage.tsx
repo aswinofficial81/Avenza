@@ -115,7 +115,7 @@ export const GoalsPage: React.FC = () => {
       </div>
 
       {/* 2. Filter & Controls Bar */}
-      <div className="bg-surface border border-border rounded-lg p-3 space-y-3">
+      <div className="bg-surface border border-border rounded-2xl p-3.5 space-y-3 shadow-xs">
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
           {/* Search Input */}
           <div className="relative flex-1">
@@ -125,7 +125,7 @@ export const GoalsPage: React.FC = () => {
               placeholder="Search goals by title..."
               value={search}
               onChange={(e) => updateFilter('search', e.target.value || undefined)}
-              className="w-full h-8 pl-8 pr-3 text-xs rounded bg-surface-2 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-focus-ring"
+              className="w-full h-9 pl-9 pr-3 text-xs rounded-xl bg-surface-2 border border-border-subtle text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-focus-ring"
             />
           </div>
 
@@ -287,7 +287,7 @@ export const GoalsPage: React.FC = () => {
               <div
                 key={goal.id}
                 onClick={() => navigate(`/goals/${goal.id}`)}
-                className="group relative p-4 rounded-lg border border-border bg-surface hover:border-border-subtle hover:bg-surface-2/60 transition-all cursor-pointer shadow-sm"
+                className="group relative p-4.5 rounded-2xl border border-border bg-surface hover:border-teal-500/30 hover:shadow-md transition-all cursor-pointer shadow-xs"
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                   {/* Left: Title & Badges */}

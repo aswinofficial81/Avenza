@@ -178,4 +178,68 @@ describe('TaskDetailPage Component', () => {
 
     expect(screen.getAllByText('Task not found').length).toBeGreaterThanOrEqual(1);
   });
+
+  it('disables completion control and provides accessible explanation when task is blocked', () => {
+    vi.spyOn(tasksHooks, 'useTask').mockReturnValue({
+      data: mockTaskDetail,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof tasksHooks.useTask>);
+
+    renderTaskDetailPage(queryClient);
+
+    const completeBtn = screen.getByRole('button', {
+      name: /Cannot complete: task has incomplete prerequisites/i,
+    });
+    expect(completeBtn).toBeDisabled();
+    expect(completeBtn).toHaveAttribute(
+      'title',
+      'Cannot complete: task has incomplete prerequisites'
+    );
+    expect(
+      screen.getByText('Cannot complete: task has incomplete prerequisites')
+    ).toBeInTheDocument();
+  });
+
+  it('enables completion control and allows interaction when task is not blocked', () => {
+    const unblockedTask: TaskDetailDto = {
+      ...mockTaskDetail,
+      is_blocked: false,
+      blocking_task_count: 0,
+      blocked_by: [],
+      dependencies: [],
+      metrics: {
+        is_blocked: false,
+        blocking_task_count: 0,
+        blocked_by: [],
+      },
+    };
+
+    vi.spyOn(tasksHooks, 'useTask').mockReturnValue({
+      data: unblockedTask,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof tasksHooks.useTask>);
+
+    vi.spyOn(tasksHooks, 'useTaskDependencies').mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof tasksHooks.useTaskDependencies>);
+
+    renderTaskDetailPage(queryClient);
+
+    const completeBtn = screen.getByRole('button', { name: /Mark Completed/i });
+    expect(completeBtn).not.toBeDisabled();
+    expect(completeBtn).toHaveAttribute('title', 'Mark Completed');
+    expect(
+      screen.queryByText('Cannot complete: task has incomplete prerequisites')
+    ).not.toBeInTheDocument();
+  });
 });

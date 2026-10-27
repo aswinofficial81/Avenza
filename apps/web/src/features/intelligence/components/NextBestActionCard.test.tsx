@@ -185,4 +185,32 @@ describe('NextBestActionCard Component', () => {
     expect(screen.getByText('Next Up')).toBeInTheDocument();
     expect(screen.getByText('Algorithms')).toBeInTheDocument();
   });
+
+  it('renders project and milestone name when action belongs to a project', () => {
+    const projectActionData: NextActionResponseData = {
+      ...mockActionData,
+      action: {
+        ...mockActionData.action!,
+        projectId: 'proj-123',
+        projectTitle: 'Avenza Core',
+        projectMilestoneId: 'ms-1',
+        projectMilestoneTitle: 'Authentication Engine',
+      },
+      reason: {
+        code: 'project_at_risk',
+        label: 'Project at risk',
+        explanation: 'Your Avenza Core project is at risk and this task belongs to its next milestone.',
+      },
+    };
+
+    render(
+      <BrowserRouter>
+        <NextBestActionCard data={projectActionData} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getAllByText('Avenza Core').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Authentication Engine/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Project at risk')).toBeInTheDocument();
+  });
 });

@@ -6,6 +6,7 @@ export interface IProfileRepository {
   findByClerkUserId(clerkUserId: string): Promise<ProfileRow | null>;
   findById(id: string): Promise<ProfileRow | null>;
   createProfile(data: ProfileInsert): Promise<ProfileRow>;
+  deleteProfile(id: string): Promise<boolean>;
 }
 
 export class SupabaseProfileRepository implements IProfileRepository {
@@ -57,6 +58,19 @@ export class SupabaseProfileRepository implements IProfileRepository {
 
     return created as ProfileRow;
   }
+
+  async deleteProfile(id: string): Promise<boolean> {
+    const { error, count } = await this.client
+      .from('profiles')
+      .delete({ count: 'exact' })
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(`Failed to delete profile: ${error.message}`);
+    }
+
+    return (count ?? 0) > 0;
+  }
 }
 
 export class InMemoryProfileRepository implements IProfileRepository {
@@ -99,6 +113,10 @@ export class InMemoryProfileRepository implements IProfileRepository {
 
     this.profiles.set(newProfile.id, newProfile);
     return { ...newProfile };
+  }
+
+  async deleteProfile(id: string): Promise<boolean> {
+    return this.profiles.delete(id);
   }
 }
 

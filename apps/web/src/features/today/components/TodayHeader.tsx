@@ -83,7 +83,7 @@ export const TodayHeader: React.FC<TodayHeaderProps> = ({
 
       <div className="flex items-center gap-2">
         {/* Day Navigation */}
-        <div className="flex items-center bg-card border border-border rounded-lg p-0.5">
+        <div className="flex items-center bg-card border border-border/80 rounded-xl p-0.5 shadow-sm">
           <Button
             variant="ghost"
             size="sm"

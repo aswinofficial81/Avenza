@@ -89,12 +89,6 @@ export function createDsaRoutes(opts: DsaRoutesOptions = {}): FastifyPluginAsync
       async (request, reply) => controller.updateAttempt(request, reply)
     );
 
-    fastify.delete(
-      '/api/v1/dsa/attempts/:attemptId',
-      { preHandler: [authHook] },
-      async (request, reply) => controller.deleteAttempt(request, reply)
-    );
-
     // Topic routes
     fastify.post(
       '/api/v1/dsa/topics',

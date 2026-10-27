@@ -70,6 +70,11 @@ export interface TaskDto {
   milestone_id: string | null;
   goal_title?: string | null;
   milestone_title?: string | null;
+  project_id?: string | null;
+  project_milestone_id?: string | null;
+  project_title?: string | null;
+  project_milestone_title?: string | null;
+  application_id?: string | null;
   academic_term_id?: string | null;
   academic_subject_id?: string | null;
   academic_topic_id?: string | null;
@@ -107,6 +112,16 @@ const scheduleComparisonRefine = <T extends { scheduled_start?: string | null; s
   return true;
 };
 
+// Project milestone requires project helper
+const projectMilestoneRequiresProjectRefine = <T extends { project_id?: string | null; project_milestone_id?: string | null }>(
+  data: T
+) => {
+  if (data.project_milestone_id && !data.project_id) {
+    return false;
+  }
+  return true;
+};
+
 // Zod Validation Schemas
 export const CreateTaskSchema = z
   .object({
@@ -117,6 +132,9 @@ export const CreateTaskSchema = z
     task_type: TaskTypeSchema.default('study'),
     goal_id: z.string().uuid('Invalid Goal ID format').nullable().optional(),
     milestone_id: z.string().uuid('Invalid Milestone ID format').nullable().optional(),
+    project_id: z.string().uuid('Invalid Project ID format').nullable().optional(),
+    project_milestone_id: z.string().uuid('Invalid Project Milestone ID format').nullable().optional(),
+    application_id: z.string().uuid('Invalid Application ID format').nullable().optional(),
     academic_term_id: z.string().uuid('Invalid Term ID format').nullable().optional(),
     academic_subject_id: z.string().uuid('Invalid Subject ID format').nullable().optional(),
     academic_topic_id: z.string().uuid('Invalid Topic ID format').nullable().optional(),
@@ -130,6 +148,10 @@ export const CreateTaskSchema = z
   .refine(scheduleComparisonRefine, {
     message: 'scheduled_end cannot be earlier than scheduled_start',
     path: ['scheduled_end'],
+  })
+  .refine(projectMilestoneRequiresProjectRefine, {
+    message: 'project_milestone_id requires project_id',
+    path: ['project_milestone_id'],
   });
 
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
@@ -143,6 +165,9 @@ export const UpdateTaskSchema = z
     task_type: TaskTypeSchema.optional(),
     goal_id: z.string().uuid('Invalid Goal ID format').nullable().optional(),
     milestone_id: z.string().uuid('Invalid Milestone ID format').nullable().optional(),
+    project_id: z.string().uuid('Invalid Project ID format').nullable().optional(),
+    project_milestone_id: z.string().uuid('Invalid Project Milestone ID format').nullable().optional(),
+    application_id: z.string().uuid('Invalid Application ID format').nullable().optional(),
     academic_term_id: z.string().uuid('Invalid Term ID format').nullable().optional(),
     academic_subject_id: z.string().uuid('Invalid Subject ID format').nullable().optional(),
     academic_topic_id: z.string().uuid('Invalid Topic ID format').nullable().optional(),
@@ -157,7 +182,19 @@ export const UpdateTaskSchema = z
   .refine(scheduleComparisonRefine, {
     message: 'scheduled_end cannot be earlier than scheduled_start',
     path: ['scheduled_end'],
-  });
+  })
+  .refine(
+    (data) => {
+      if (data.project_milestone_id && data.project_id === null) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'project_milestone_id requires project_id',
+      path: ['project_milestone_id'],
+    }
+  );
 
 export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
 
@@ -173,6 +210,9 @@ export const TaskQuerySchema = z.object({
   task_type: TaskTypeSchema.optional(),
   goal_id: z.string().uuid().optional(),
   milestone_id: z.string().uuid().optional(),
+  project_id: z.string().uuid().optional(),
+  project_milestone_id: z.string().uuid().optional(),
+  application_id: z.string().uuid().optional(),
   blocked: z.coerce.boolean().optional(),
   search: z.string().max(100).optional(),
   due_before: z.string().datetime({ offset: true }).optional(),

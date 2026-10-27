@@ -117,11 +117,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'nav-career',
-        title: 'Go to Career',
+        title: 'Go to Career Pipeline',
         category: 'Navigation',
         icon: Compass,
         perform: () => navigate('/career'),
-        keywords: ['career', 'jobs', 'resume', 'applications'],
+        keywords: ['career', 'jobs', 'pipeline', 'resume', 'applications', 'interviews'],
       },
       {
         id: 'nav-goals',

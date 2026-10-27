@@ -21,6 +21,19 @@ export interface DependencyWithPrerequisiteTask extends TaskDependencyRow {
   };
 }
 
+export class TaskBlockedError extends Error {
+  public readonly code = 'TASK_BLOCKED';
+  public readonly statusCode = 400;
+
+  constructor(
+    message: string = 'Cannot transition blocked task to in_progress or completed while prerequisites remain incomplete.',
+    public readonly blockedBy?: Array<{ id: string; title: string; status: TaskStatus }>
+  ) {
+    super(message);
+    this.name = 'TaskBlockedError';
+  }
+}
+
 export interface ITasksRepository {
   // Task operations
   findTasks(options: TaskFindOptions): Promise<PaginatedList<TaskRow>>;

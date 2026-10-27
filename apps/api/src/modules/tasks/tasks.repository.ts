@@ -45,6 +45,7 @@ interface SupabaseAllDepRow {
   task_id: string;
   depends_on_task_id: string;
   task: { user_id: string } | null;
+  prerequisite?: { user_id: string } | null;
 }
 
 interface SupabaseDepLookupRow {
@@ -65,6 +66,41 @@ interface SupabaseDepSummaryRow {
 
 export class SupabaseTasksRepository implements ITasksRepository {
   constructor(private readonly client: SupabaseClient<Database> = getSupabaseAdminClient()) {}
+
+  private async fetchAllUserTaskIds(userId: string): Promise<string[]> {
+    const PAGE_SIZE = 1000;
+    let offset = 0;
+    const taskIds: string[] = [];
+
+    while (true) {
+      const { data, error } = await this.client
+        .from('tasks')
+        .select('id')
+        .eq('user_id', userId)
+        .order('id', { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      if (error) {
+        throw new Error(`Failed to retrieve user task IDs: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        break;
+      }
+
+      for (const t of data) {
+        taskIds.push(t.id);
+      }
+
+      if (data.length < PAGE_SIZE) {
+        break;
+      }
+
+      offset += PAGE_SIZE;
+    }
+
+    return taskIds;
+  }
 
   async findTasks(options: TaskFindOptions): Promise<PaginatedList<TaskRow>> {
     const {
@@ -90,29 +126,57 @@ export class SupabaseTasksRepository implements ITasksRepository {
     // If blocked filter is specified, pre-calculate blocked task IDs
     let blockedTaskIds: string[] | null = null;
     if (blocked !== undefined) {
-      // Find all tasks for this user that have at least one dependency where prerequisite is not completed
-      const { data: depRows, error: depError } = await this.client
-        .from('task_dependencies')
-        .select(`
-          task_id,
-          task:tasks!task_id(user_id),
-          prerequisite:tasks!depends_on_task_id(id, status, user_id)
-        `);
-
-      if (depError) {
-        throw new Error(`Failed to check blocked dependencies: ${depError.message}`);
-      }
+      // 1. Retrieve all task IDs belonging to the requesting user via paginated retrieval
+      const userTaskIds = await this.fetchAllUserTaskIds(userId);
 
       const blockedSet = new Set<string>();
-      if (depRows) {
-        for (const row of depRows as unknown as SupabaseDepCheckRow[]) {
-          if (row.task?.user_id === userId && row.prerequisite?.user_id === userId) {
-            if (row.prerequisite?.status !== 'completed') {
-              blockedSet.add(row.task_id);
+
+      // 2. Query task_dependencies only for user-owned tasks, in safe batches of at most 500 IDs with pagination
+      if (userTaskIds.length > 0) {
+        const BATCH_SIZE = 500;
+        const DEP_PAGE_SIZE = 1000;
+        for (let i = 0; i < userTaskIds.length; i += BATCH_SIZE) {
+          const batch = userTaskIds.slice(i, i + BATCH_SIZE);
+          let depOffset = 0;
+
+          while (true) {
+            const { data: depRows, error: depError } = await this.client
+              .from('task_dependencies')
+              .select(`
+                task_id,
+                task:tasks!task_id(user_id),
+                prerequisite:tasks!depends_on_task_id(id, status, user_id)
+              `)
+              .in('task_id', batch)
+              .order('id', { ascending: true })
+              .range(depOffset, depOffset + DEP_PAGE_SIZE - 1);
+
+            if (depError) {
+              throw new Error(`Failed to check blocked dependencies: ${depError.message}`);
             }
+
+            if (!depRows || depRows.length === 0) {
+              break;
+            }
+
+            for (const row of depRows as unknown as SupabaseDepCheckRow[]) {
+              // Verify BOTH dependent task and prerequisite belong to the requesting user
+              if (row.task?.user_id === userId && row.prerequisite?.user_id === userId) {
+                if (row.prerequisite.status !== 'completed') {
+                  blockedSet.add(row.task_id);
+                }
+              }
+            }
+
+            if (depRows.length < DEP_PAGE_SIZE) {
+              break;
+            }
+
+            depOffset += DEP_PAGE_SIZE;
           }
         }
       }
+
       blockedTaskIds = Array.from(blockedSet);
     }
 
@@ -135,6 +199,15 @@ export class SupabaseTasksRepository implements ITasksRepository {
     }
     if (milestone_id) {
       query = query.eq('milestone_id', milestone_id);
+    }
+    if (options.project_id) {
+      query = query.eq('project_id', options.project_id);
+    }
+    if (options.project_milestone_id) {
+      query = query.eq('project_milestone_id', options.project_milestone_id);
+    }
+    if (options.application_id) {
+      query = query.eq('application_id', options.application_id);
     }
     if (search && search.trim()) {
       query = query.ilike('title', `%${search.trim()}%`);
@@ -336,28 +409,64 @@ export class SupabaseTasksRepository implements ITasksRepository {
   async getAllUserDependencies(
     userId: string
   ): Promise<Array<{ id: string; task_id: string; depends_on_task_id: string }>> {
-    const { data, error } = await this.client
-      .from('task_dependencies')
-      .select(`
-        id,
-        task_id,
-        depends_on_task_id,
-        task:tasks!task_id(user_id)
-      `);
+    // 1. Retrieve all task IDs belonging to the requesting user via paginated retrieval
+    const userTaskIds = await this.fetchAllUserTaskIds(userId);
 
-    if (error) {
-      throw new Error(`Failed to get all dependencies: ${error.message}`);
+    if (userTaskIds.length === 0) {
+      return [];
     }
 
-    if (!data) return [];
+    const results: Array<{ id: string; task_id: string; depends_on_task_id: string }> = [];
+    const BATCH_SIZE = 500;
+    const DEP_PAGE_SIZE = 1000;
 
-    return (data as unknown as SupabaseAllDepRow[])
-      .filter((d) => d.task?.user_id === userId)
-      .map((d) => ({
-        id: d.id,
-        task_id: d.task_id,
-        depends_on_task_id: d.depends_on_task_id,
-      }));
+    // 2. Query task_dependencies only for user-owned tasks, in safe batches of at most 500 IDs with pagination
+    for (let i = 0; i < userTaskIds.length; i += BATCH_SIZE) {
+      const batch = userTaskIds.slice(i, i + BATCH_SIZE);
+      let depOffset = 0;
+
+      while (true) {
+        const { data, error } = await this.client
+          .from('task_dependencies')
+          .select(`
+            id,
+            task_id,
+            depends_on_task_id,
+            task:tasks!task_id(user_id),
+            prerequisite:tasks!depends_on_task_id(user_id)
+          `)
+          .in('task_id', batch)
+          .order('id', { ascending: true })
+          .range(depOffset, depOffset + DEP_PAGE_SIZE - 1);
+
+        if (error) {
+          throw new Error(`Failed to get all dependencies: ${error.message}`);
+        }
+
+        if (!data || data.length === 0) {
+          break;
+        }
+
+        for (const d of data as unknown as SupabaseAllDepRow[]) {
+          // Verify both dependent task and prerequisite belong to the requesting user
+          if (d.task?.user_id === userId && d.prerequisite?.user_id === userId) {
+            results.push({
+              id: d.id,
+              task_id: d.task_id,
+              depends_on_task_id: d.depends_on_task_id,
+            });
+          }
+        }
+
+        if (data.length < DEP_PAGE_SIZE) {
+          break;
+        }
+
+        depOffset += DEP_PAGE_SIZE;
+      }
+    }
+
+    return results;
   }
 
   async createDependency(data: TaskDependencyInsert, userId: string): Promise<TaskDependencyRow> {
@@ -515,6 +624,10 @@ export class InMemoryTasksRepository implements ITasksRepository {
     }
   }
 
+  getTasksMap(): Map<string, TaskRow> {
+    return this.tasks;
+  }
+
   async findTasks(options: TaskFindOptions): Promise<PaginatedList<TaskRow>> {
     const {
       userId,
@@ -543,6 +656,9 @@ export class InMemoryTasksRepository implements ITasksRepository {
     if (task_type) list = list.filter((t) => t.task_type === task_type);
     if (goal_id) list = list.filter((t) => t.goal_id === goal_id);
     if (milestone_id) list = list.filter((t) => t.milestone_id === milestone_id);
+    if (options.project_id) list = list.filter((t) => t.project_id === options.project_id);
+    if (options.project_milestone_id) list = list.filter((t) => t.project_milestone_id === options.project_milestone_id);
+    if (options.application_id) list = list.filter((t) => t.application_id === options.application_id);
     if (search && search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter((t) => t.title.toLowerCase().includes(q));
@@ -554,11 +670,11 @@ export class InMemoryTasksRepository implements ITasksRepository {
 
     if (blocked !== undefined) {
       list = list.filter((t) => {
-        // check if t has uncompleted dependencies
+        // check if t has uncompleted dependencies belonging to this user
         const taskDeps = Array.from(this.dependencies.values()).filter((d) => d.task_id === t.id);
         const isBlocked = taskDeps.some((d) => {
           const prereq = this.tasks.get(d.depends_on_task_id);
-          return prereq && prereq.status !== 'completed';
+          return prereq && prereq.user_id === userId && prereq.status !== 'completed';
         });
         return blocked ? isBlocked : !isBlocked;
       });
@@ -608,6 +724,9 @@ export class InMemoryTasksRepository implements ITasksRepository {
       task_type: data.task_type ?? 'personal',
       goal_id: data.goal_id ?? null,
       milestone_id: data.milestone_id ?? null,
+      project_id: data.project_id ?? null,
+      project_milestone_id: data.project_milestone_id ?? null,
+      application_id: data.application_id ?? null,
       estimated_minutes: data.estimated_minutes ?? null,
       actual_minutes: data.actual_minutes ?? null,
       due_at: data.due_at ?? null,
@@ -697,7 +816,8 @@ export class InMemoryTasksRepository implements ITasksRepository {
     const result: Array<{ id: string; task_id: string; depends_on_task_id: string }> = [];
     for (const dep of this.dependencies.values()) {
       const task = await this.findTaskById(dep.task_id, userId);
-      if (task) {
+      const prereq = await this.findTaskById(dep.depends_on_task_id, userId);
+      if (task && prereq) {
         result.push({
           id: dep.id,
           task_id: dep.task_id,

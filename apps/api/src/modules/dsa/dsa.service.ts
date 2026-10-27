@@ -40,7 +40,6 @@ export interface IDsaRepository {
   getAttemptById(userId: string, attemptId: string): Promise<DsaAttemptDto | null>;
   listAttemptsByProblem(userId: string, problemId: string): Promise<DsaAttemptDto[]>;
   updateAttempt(userId: string, attemptId: string, data: UpdateDsaAttemptInput): Promise<DsaAttemptDto>;
-  deleteAttempt(userId: string, attemptId: string): Promise<void>;
 
   // Topic CRUD
   createTopic(userId: string, data: CreateDsaTopicInput): Promise<DsaTopicDto>;
@@ -97,7 +96,6 @@ export interface IDsaService {
   getAttempt(userId: string, attemptId: string): Promise<DsaAttemptDto>;
   listAttemptsByProblem(userId: string, problemId: string): Promise<DsaAttemptDto[]>;
   updateAttempt(userId: string, attemptId: string, data: UpdateDsaAttemptInput): Promise<DsaAttemptDto>;
-  deleteAttempt(userId: string, attemptId: string): Promise<void>;
 
   // Topic CRUD
   createTopic(userId: string, data: CreateDsaTopicInput): Promise<DsaTopicDto>;

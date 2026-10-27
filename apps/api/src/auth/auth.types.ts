@@ -16,5 +16,6 @@ declare module 'fastify' {
   interface FastifyRequest {
     auth?: RequestAuthContext;
     profile?: ProfileRow;
+    rawBody?: string;
   }
 }

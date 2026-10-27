@@ -1,6 +1,10 @@
 import type {
   GoalStatus,
   MilestoneStatus,
+  ProjectMilestoneStatus,
+  ProjectPriority,
+  ProjectStatus,
+  ProjectType,
   TaskPriority,
   TaskStatus,
   TaskType,
@@ -25,10 +29,43 @@ export interface MilestoneContextItem {
   target_date: string | null;
 }
 
+export interface ProjectMilestoneContextItem {
+  id: string;
+  project_id: string;
+  title: string;
+  status: ProjectMilestoneStatus;
+  order_index: number;
+  target_date: string | null;
+}
+
+export interface ProjectTaskSummaryContextItem {
+  totalTasks: number;
+  completedTasks: number;
+  openTasks: number;
+}
+
+export interface ProjectContextItem {
+  project_id: string;
+  title: string;
+  status: ProjectStatus;
+  priority: ProjectPriority;
+  project_type: ProjectType;
+  target_date: string | null;
+  health: 'completed' | 'at_risk' | 'on_track' | 'unknown';
+  progress: number;
+  active_milestone: ProjectMilestoneContextItem | null;
+  next_pending_milestone: ProjectMilestoneContextItem | null;
+  milestone_target_date: string | null;
+  task_summary: ProjectTaskSummaryContextItem;
+}
+
 export interface TaskContextItem {
   id: string;
   goal_id: string | null;
   milestone_id: string | null;
+  project_id?: string | null;
+  project_milestone_id?: string | null;
+  application_id?: string | null;
   title: string;
   description: string | null;
   priority: TaskPriority;
@@ -63,6 +100,40 @@ export interface EvidenceContextItem {
   linked_task_ids: string[];
 }
 
+export interface CareerApplicationContextItem {
+  id: string;
+  company_name: string;
+  role_title: string;
+  stage: string;
+  deadline: string | null;
+  last_meaningful_activity_at: string | null;
+  is_follow_up_eligible: boolean;
+  featured_project_ids: string[];
+}
+
+export interface CareerInterviewContextItem {
+  id: string;
+  application_id: string;
+  round_number: number;
+  round_type: string;
+  scheduled_at: string | null;
+  status: string;
+}
+
+export interface CareerSkillGapContextItem {
+  skill_id: string;
+  skill_name: string;
+  importance: 'required';
+}
+
+export interface CareerContext {
+  activeApplications: CareerApplicationContextItem[];
+  upcomingInterviews: CareerInterviewContextItem[];
+  requiredSkillGaps: CareerSkillGapContextItem[];
+  taskSkillsMap: Record<string, string[]>;
+  featuredProjectIds: string[];
+}
+
 export interface IntelligenceContext {
   userId: string;
   currentDate: string; // YYYY-MM-DD
@@ -70,9 +141,12 @@ export interface IntelligenceContext {
   timezone: string;
   activeGoals: GoalContextItem[];
   activeMilestones: MilestoneContextItem[];
+  activeProjects: ProjectContextItem[];
+  projects?: ProjectContextItem[];
   openTasks: TaskContextItem[];
   recentCompletedTasks: TaskContextItem[];
   recentFocusSessions: FocusContextItem[];
   recentEvidence: EvidenceContextItem[];
   activeFocusSessionTaskId: string | null;
+  career?: CareerContext;
 }

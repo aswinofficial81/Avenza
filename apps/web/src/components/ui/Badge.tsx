@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
 
-export type BadgeVariant = 'default' | 'secondary' | 'success' | 'warning' | 'danger' | 'info';
+export type BadgeVariant = 'default' | 'secondary' | 'outline' | 'success' | 'warning' | 'danger' | 'info';
 export type BadgeSize = 'sm' | 'md';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -18,7 +18,8 @@ export const Badge: React.FC<BadgeProps> = ({
 }) => {
   const variantStyles: Record<BadgeVariant, string> = {
     default: 'bg-surface-2 text-foreground border-border-subtle',
-    secondary: 'bg-surface text-muted-foreground border-border',
+    secondary: 'bg-surface-2/70 text-muted-foreground border-border',
+    outline: 'bg-transparent text-muted-foreground border-border-subtle',
     success: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
     warning: 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/20',
     danger: 'bg-rose-500/10 text-rose-800 dark:text-rose-300 border-rose-500/20',
@@ -26,8 +27,8 @@ export const Badge: React.FC<BadgeProps> = ({
   };
 
   const sizeStyles: Record<BadgeSize, string> = {
-    sm: 'text-[11px] px-2 py-0.5 font-medium rounded-sm',
-    md: 'text-xs px-2.5 py-1 font-medium rounded',
+    sm: 'text-[11px] px-2 py-0.5 font-medium rounded-full',
+    md: 'text-xs px-2.5 py-1 font-medium rounded-full',
   };
 
   return (

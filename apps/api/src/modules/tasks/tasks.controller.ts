@@ -8,6 +8,7 @@ import {
 } from '@avenza/shared';
 import { z } from 'zod';
 import { TasksService, defaultTasksService } from './tasks.service';
+import { TaskBlockedError } from './tasks.types';
 
 const IdParamSchema = z.object({
   id: z.string().uuid(),
@@ -162,6 +163,17 @@ export class TasksController {
         data: updated,
       });
     } catch (err: unknown) {
+      if (err instanceof TaskBlockedError) {
+        const errorResponse: ApiErrorResponse = {
+          success: false,
+          error: {
+            code: 'TASK_BLOCKED',
+            message: err.message,
+            details: err.blockedBy ? { blocked_by: err.blockedBy } : undefined,
+          },
+        };
+        return reply.status(400).send(errorResponse);
+      }
       const message = err instanceof Error ? err.message : 'Failed to update task';
       return this.sendValidationError(reply, message);
     }

@@ -40,19 +40,35 @@ export const TodayTaskRow: React.FC<TodayTaskRowProps> = ({
     >
       <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
         {/* Completion Toggle */}
-        <button
-          type="button"
-          onClick={() => onComplete(task.id)}
-          disabled={isActionLoading}
-          className="mt-0.5 sm:mt-0 text-muted-foreground hover:text-primary transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-full"
-          aria-label={isCompleted ? 'Completed task' : 'Mark task as completed'}
-        >
-          {isCompleted ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
-          ) : (
-            <Circle className="w-5 h-5 text-muted-foreground/60 hover:text-emerald-500 transition-colors" />
-          )}
-        </button>
+        {(() => {
+          const isBlocked = !isCompleted && task.is_blocked;
+          const label = isBlocked
+            ? 'Cannot complete: task has incomplete prerequisites'
+            : isCompleted
+            ? 'Completed task'
+            : 'Mark task as completed';
+
+          return (
+            <button
+              type="button"
+              onClick={() => onComplete(task.id)}
+              disabled={isActionLoading || isBlocked}
+              className={`mt-0.5 sm:mt-0 flex-shrink-0 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-full ${
+                isBlocked
+                  ? 'opacity-40 cursor-not-allowed text-muted-foreground'
+                  : 'text-muted-foreground hover:text-primary'
+              }`}
+              aria-label={label}
+              title={label}
+            >
+              {isCompleted ? (
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
+              ) : (
+                <Circle className="w-5 h-5 text-muted-foreground/60 hover:text-emerald-500 transition-colors" />
+              )}
+            </button>
+          );
+        })()}
 
         <div className="space-y-1 min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

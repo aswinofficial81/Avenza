@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { Tooltip } from '../ui/Tooltip';
 import { NAV_SECTIONS, NavItem } from './nav-items';
-import { Layers, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Layers, ChevronLeft, ChevronRight, X, Sparkles } from 'lucide-react';
 import { APP_NAME, APP_TAGLINE } from '@avenza/shared';
 
 export interface SidebarProps {
@@ -50,14 +50,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={(e) => handleItemClick(item, e, isMobile)}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center rounded text-xs font-medium transition-colors',
+                      'flex items-center rounded-xl text-xs font-medium transition-colors',
                       'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring',
                       collapsed
                         ? 'h-9 w-9 justify-center mx-auto'
                         : 'h-8 px-2.5 gap-2.5 w-full',
                       isActive && !item.isAction
-                        ? 'bg-surface-2 text-foreground font-semibold shadow-sm border border-border-subtle'
-                        : 'text-muted-foreground hover:bg-surface-2/60 hover:text-foreground'
+                        ? 'bg-teal-500/10 text-teal-900 dark:text-[#2DE2C5] dark:bg-teal-400/15 font-semibold shadow-xs border border-teal-500/20'
+                        : 'text-muted-foreground hover:bg-surface-2/70 hover:text-foreground'
                     )
                   }
                 >
@@ -100,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         >
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary text-primary-foreground font-semibold shadow-sm">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#14B8A6] to-[#064E4A] dark:from-[#2DE2C5] dark:to-[#0F766E] text-white font-semibold shadow-sm">
               <Layers className="h-4 w-4" />
             </div>
             {!isCollapsed && (
@@ -118,6 +118,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation Groups */}
         {renderNavLinks(isCollapsed, false)}
+
+        {/* Motivational Streak Widget (Visible when expanded) */}
+        {!isCollapsed && (
+          <div className="p-3 mx-2.5 mb-2 rounded-xl bg-gradient-to-br from-teal-500/10 via-surface-2/60 to-teal-500/5 border border-teal-500/20 flex items-start gap-2.5 shrink-0 select-none">
+            <div className="p-1.5 rounded-lg bg-teal-500/20 text-teal-700 dark:text-teal-300 shrink-0 mt-0.5">
+              <Sparkles className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-foreground leading-tight">Keep Going!</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+                You're 3 days away from a new streak badge 🔥
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Footer Collapse Toggle on Desktop */}
         <div className="flex items-center justify-between p-2 border-t border-border-subtle shrink-0">
@@ -162,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Mobile Header with Close Button */}
         <div className="flex items-center justify-between h-14 px-4 border-b border-border-subtle shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary text-primary-foreground font-semibold shadow-sm">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#14B8A6] to-[#064E4A] dark:from-[#2DE2C5] dark:to-[#0F766E] text-white font-semibold shadow-sm">
               <Layers className="h-4 w-4" />
             </div>
             <div className="flex flex-col min-w-0">

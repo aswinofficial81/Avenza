@@ -71,7 +71,7 @@ export const TodayProgress: React.FC<TodayProgressProps> = ({ summary }) => {
         {/* Right: Targets Progress Bars */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:w-1/2">
           {/* Daily Minimum */}
-          <div className="space-y-1.5 p-3 rounded-lg bg-background/50 border border-border/60">
+          <div className="space-y-1.5 p-3 rounded-xl bg-background/60 border border-border/70">
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium text-muted-foreground flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-muted-foreground" />
@@ -85,7 +85,7 @@ export const TodayProgress: React.FC<TodayProgressProps> = ({ summary }) => {
           </div>
 
           {/* Daily Target */}
-          <div className="space-y-1.5 p-3 rounded-lg bg-background/50 border border-border/60">
+          <div className="space-y-1.5 p-3 rounded-xl bg-background/60 border border-border/70">
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium text-muted-foreground flex items-center gap-1">
                 <Target className="w-3.5 h-3.5 text-primary" />

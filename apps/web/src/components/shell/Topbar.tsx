@@ -59,12 +59,12 @@ export const Topbar: React.FC<TopbarProps> = ({
         <button
           type="button"
           onClick={onOpenCommandPalette}
-          className="hidden sm:inline-flex items-center gap-2 h-8 px-2.5 rounded bg-surface-2 hover:bg-surface border border-border-subtle text-muted-foreground hover:text-foreground text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
+          className="hidden sm:inline-flex items-center gap-2 h-8 px-3 rounded-xl bg-surface-2/80 hover:bg-surface-2 border border-border-subtle text-muted-foreground hover:text-foreground text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
           aria-label="Open command palette (Ctrl+K)"
         >
-          <Command className="w-3.5 h-3.5" />
+          <Command className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
           <span className="font-sans">Search or jump to...</span>
-          <kbd className="hidden md:inline-flex items-center gap-0.5 rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground border border-border">
+          <kbd className="hidden md:inline-flex items-center gap-0.5 rounded-md bg-surface px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground border border-border">
             <span>⌘K</span>
           </kbd>
         </button>
@@ -74,7 +74,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           type="button"
           onClick={onOpenCommandPalette}
           aria-label="Open command palette"
-          className="sm:hidden p-2 rounded text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
+          className="sm:hidden p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
         >
           <Command className="w-4 h-4" />
         </button>
@@ -85,7 +85,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           onClick={handleCycleTheme}
           aria-label={`Current: ${themeLabel}. Click to switch theme`}
           title={`Theme: ${themeLabel}`}
-          className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
+          className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
         >
           {themeIcon}
         </button>
@@ -95,7 +95,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           <UserButton
             appearance={{
               elements: {
-                userButtonAvatarBox: 'w-7 h-7 rounded border border-border',
+                userButtonAvatarBox: 'w-7 h-7 rounded-full border border-teal-500/30',
               },
             }}
           />
