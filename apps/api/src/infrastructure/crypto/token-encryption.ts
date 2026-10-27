@@ -7,9 +7,10 @@ const IV_LENGTH = 12; // 96 bits standard for GCM
 function getEncryptionKey(): Buffer {
   // Use explicit integration encryption key, fallback to hash of server secret or consistent fallback
   const rawKey =
-    process.env.INTEGRATIONS_ENCRYPTION_KEY ||
+    env.INTEGRATION_TOKEN_ENCRYPTION_KEY ||
     env.CLERK_SECRET_KEY ||
     'avenza-default-secure-integration-encryption-key-seed';
+
   return crypto.createHash('sha256').update(rawKey).digest();
 }
 
