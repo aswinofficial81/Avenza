@@ -100,6 +100,7 @@ const mockProposal: ScheduleProposalResponseDto = {
 
 function renderWithClient(ui: React.ReactElement, initialRoute = '/planner') {
   window.history.pushState({}, 'Test', initialRoute);
+
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -119,10 +120,14 @@ describe('PlannerPage & /planner Route', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
     mutateAsyncMock = vi.fn().mockResolvedValue({
       success: true,
       appliedCount: 2,
-      taskIds: ['00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002'],
+      taskIds: [
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002',
+      ],
       appliedAt: '2026-10-18T12:00:00.000Z',
     });
 
@@ -142,16 +147,14 @@ describe('PlannerPage & /planner Route', () => {
   });
 
   it('1. /planner route renders PlannerPage and does NOT render PlaceholderPage', async () => {
-    // Keep your existing render and setup code unchanged.
     renderWithClient(<AppRoutes />, '/planner');
 
     expect(
       await screen.findByRole('heading', {
         name: /adaptive planner/i,
-      }),
+      })
     ).toBeInTheDocument();
 
-    // Keep the existing placeholder assertion.
     expect(screen.queryByText(/placeholder/i)).not.toBeInTheDocument();
   });
 
@@ -171,8 +174,19 @@ describe('PlannerPage & /planner Route', () => {
 
     expect(screen.getByText('09:00 – 17:00')).toBeInTheDocument();
     expect(screen.getByText('America/New_York')).toBeInTheDocument();
-    expect(screen.getByText(/Google Calendar Offline/i)).toBeInTheDocument();
-    expect(screen.getByText(/90 \/ 120 min/i)).toBeInTheDocument();
+
+    // The dedicated warning should appear once, without a duplicate in warnings.
+    expect(screen.getAllByText(/Google Calendar Offline/i)).toHaveLength(1);
+
+    // Verify the proposed duration, target, utilization percentage, and maximum.
+    expect(screen.getAllByText('90m')).toHaveLength(2);
+    expect(screen.getByText('120m')).toBeInTheDocument();
+    expect(screen.getByText('75%')).toBeInTheDocument();
+    expect(screen.getByText('Max allowed:')).toBeInTheDocument();
+    expect(screen.getByText('240m')).toBeInTheDocument();
+
+    // A non-calendar warning must still be visible.
+    expect(screen.getByText(/has no estimate/i)).toBeInTheDocument();
   });
 
   it('4. displays proposed task blocks with priority, duration, defaulted estimate badges, and view links', () => {
@@ -180,15 +194,17 @@ describe('PlannerPage & /planner Route', () => {
 
     expect(screen.getByText('Implement Raft Heartbeat')).toBeInTheDocument();
     expect(screen.getByText('Cache invalidation write-up')).toBeInTheDocument();
-    expect(screen.getByText('Provisional (30m default)')).toBeInTheDocument();
-    expect(screen.getAllByText('View Details →')).toHaveLength(2);
+    expect(screen.getByText('Provisional 30m')).toBeInTheDocument();
+    expect(screen.getAllByText('View →')).toHaveLength(2);
   });
 
   it('5. renders unscheduled tasks with explicit reason descriptions', () => {
     renderWithClient(<PlannerPage />);
 
     expect(screen.getByText('Deploy to Kubernetes Cluster')).toBeInTheDocument();
-    expect(screen.getByText(/Prerequisites incomplete \(1 prerequisite remaining\)/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Prerequisites incomplete \(1 prerequisite remaining\)/i)
+    ).toBeInTheDocument();
     expect(screen.getByText('Read Consensus Paper')).toBeInTheDocument();
     expect(screen.getByText(/Daily study target of 120 minutes reached/i)).toBeInTheDocument();
   });
@@ -200,7 +216,9 @@ describe('PlannerPage & /planner Route', () => {
     fireEvent.click(discardBtn);
 
     expect(screen.getByText('Proposal Discarded')).toBeInTheDocument();
-    expect(screen.getByText(/No task schedules or statuses were modified/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/No task schedules or statuses were modified/i)
+    ).toBeInTheDocument();
     expect(mutateAsyncMock).not.toHaveBeenCalled();
   });
 
@@ -210,11 +228,11 @@ describe('PlannerPage & /planner Route', () => {
     const applyBtn = screen.getByRole('button', { name: /apply schedule/i });
     fireEvent.click(applyBtn);
 
-    // Modal opens
-    expect(screen.getByRole('heading', { name: /confirm schedule application/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /confirm schedule application/i })
+    ).toBeInTheDocument();
     expect(screen.getByText(/Total Work Duration:/i)).toBeInTheDocument();
 
-    // Confirm button inside modal
     const confirmBtn = screen.getByRole('button', { name: /confirm & apply/i });
     fireEvent.click(confirmBtn);
 
@@ -252,7 +270,9 @@ describe('PlannerPage & /planner Route', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Schedule Conflict or Stale Proposal/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /refresh proposal now/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /refresh proposal now/i })
+      ).toBeInTheDocument();
     });
   });
 });

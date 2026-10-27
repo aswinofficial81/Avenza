@@ -1,4 +1,4 @@
-import type { Database, UserPreferencesRow } from '@avenza/shared';
+import type { Database, UserPreferencesRow, UpdatePreferencesInput } from '@avenza/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import { getSupabaseAdminClient } from '../../db/supabase.client';
@@ -6,6 +6,7 @@ import { getSupabaseAdminClient } from '../../db/supabase.client';
 export interface IPreferencesRepository {
   findByUserId(userId: string): Promise<UserPreferencesRow | null>;
   ensurePreferences(userId: string, defaultTimezone?: string | null): Promise<UserPreferencesRow>;
+  updatePreferences(userId: string, updates: UpdatePreferencesInput): Promise<UserPreferencesRow>;
 }
 
 export class SupabasePreferencesRepository implements IPreferencesRepository {
@@ -53,6 +54,27 @@ export class SupabasePreferencesRepository implements IPreferencesRepository {
 
     return data as UserPreferencesRow;
   }
+
+  async updatePreferences(
+    userId: string,
+    updates: UpdatePreferencesInput
+  ): Promise<UserPreferencesRow> {
+    // Ensure the row exists before updating
+    await this.ensurePreferences(userId);
+
+    const { data, error } = await this.client
+      .from('user_preferences')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .select('*')
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to update user preferences: ${error.message}`);
+    }
+
+    return data as UserPreferencesRow;
+  }
 }
 
 export class InMemoryPreferencesRepository implements IPreferencesRepository {
@@ -87,6 +109,20 @@ export class InMemoryPreferencesRepository implements IPreferencesRepository {
 
     this.preferences.set(newPref.id, newPref);
     return { ...newPref };
+  }
+
+  async updatePreferences(
+    userId: string,
+    updates: UpdatePreferencesInput
+  ): Promise<UserPreferencesRow> {
+    const existing = await this.ensurePreferences(userId);
+    const updated: UserPreferencesRow = {
+      ...existing,
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    this.preferences.set(updated.id, updated);
+    return { ...updated };
   }
 
   // Testing helper

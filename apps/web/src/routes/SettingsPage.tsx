@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { useTheme } from '../lib/theme';
 import { useApiClient } from '../lib/api-client';
@@ -16,8 +16,11 @@ import {
   Trash2,
   AlertTriangle,
   ShieldAlert,
+  Clock,
+  Save,
 } from 'lucide-react';
 import { ConnectedAccountsSection } from '../features/integrations/components/ConnectedAccountsSection';
+import { usePreferences, useUpdatePreferences } from '../features/preferences/usePreferences';
 
 export const SettingsPage: React.FC = () => {
   const { user } = useUser();
@@ -38,6 +41,59 @@ export const SettingsPage: React.FC = () => {
   const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   const isPasswordUser = Boolean(user?.passwordEnabled);
+
+  // Study Schedule preferences state
+  const { data: preferences, isLoading: isPrefsLoading } = usePreferences();
+  const updatePrefsMutation = useUpdatePreferences();
+  const [studyStart, setStudyStart] = useState('');
+  const [studyEnd, setStudyEnd] = useState('');
+  const [dailyMin, setDailyMin] = useState(30);
+  const [dailyTarget, setDailyTarget] = useState(120);
+  const [prefsError, setPrefsError] = useState<string | null>(null);
+  const [prefsSaved, setPrefsSaved] = useState(false);
+
+  // Sync form fields once preferences load
+  useEffect(() => {
+    if (preferences) {
+      setStudyStart(preferences.preferred_study_start ?? '');
+      setStudyEnd(preferences.preferred_study_end ?? '');
+      setDailyMin(preferences.daily_minimum_minutes);
+      setDailyTarget(preferences.daily_target_minutes);
+    }
+  }, [preferences]);
+
+  const handleSaveStudyPrefs = async () => {
+    setPrefsError(null);
+    setPrefsSaved(false);
+    const HHmmRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+    if (studyStart && !HHmmRegex.test(studyStart)) {
+      setPrefsError('Study start must be a valid HH:mm time (e.g. 08:00).');
+      return;
+    }
+    if (studyEnd && !HHmmRegex.test(studyEnd)) {
+      setPrefsError('Study end must be a valid HH:mm time (e.g. 22:00).');
+      return;
+    }
+    if (studyStart && studyEnd && studyStart >= studyEnd) {
+      setPrefsError('Study start must be earlier than study end.');
+      return;
+    }
+    if (dailyTarget < dailyMin) {
+      setPrefsError('Daily target must be >= daily minimum.');
+      return;
+    }
+    try {
+      await updatePrefsMutation.mutateAsync({
+        preferred_study_start: studyStart || null,
+        preferred_study_end: studyEnd || null,
+        daily_minimum_minutes: dailyMin,
+        daily_target_minutes: dailyTarget,
+      });
+      setPrefsSaved(true);
+    } catch (err: unknown) {
+      setPrefsError(err instanceof Error ? err.message : 'Failed to save preferences.');
+    }
+  };
 
   const canSubmitDeletion =
     isPasswordUser &&
@@ -184,6 +240,85 @@ export const SettingsPage: React.FC = () => {
 
       {/* Connected Accounts Section */}
       <ConnectedAccountsSection />
+
+      {/* Study Schedule Preferences */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <CardTitle className="text-sm">Study Schedule</CardTitle>
+          </div>
+          <CardDescription>
+            Set your available study window and daily study targets. Avenza uses these to schedule
+            tasks within your free time.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isPrefsLoading ? (
+            <p className="text-xs text-muted-foreground">Loading preferences…</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Study Window Start"
+                  type="time"
+                  value={studyStart}
+                  onChange={(e) => { setStudyStart(e.target.value); setPrefsSaved(false); }}
+                  disabled={updatePrefsMutation.isPending}
+                />
+                <Input
+                  label="Study Window End"
+                  type="time"
+                  value={studyEnd}
+                  onChange={(e) => { setStudyEnd(e.target.value); setPrefsSaved(false); }}
+                  disabled={updatePrefsMutation.isPending}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Daily Minimum (minutes)"
+                  type="number"
+                  min={0}
+                  max={1440}
+                  value={String(dailyMin)}
+                  onChange={(e) => { setDailyMin(Number(e.target.value)); setPrefsSaved(false); }}
+                  disabled={updatePrefsMutation.isPending}
+                  description="Least amount of study per day"
+                />
+                <Input
+                  label="Daily Target (minutes)"
+                  type="number"
+                  min={0}
+                  max={1440}
+                  value={String(dailyTarget)}
+                  onChange={(e) => { setDailyTarget(Number(e.target.value)); setPrefsSaved(false); }}
+                  disabled={updatePrefsMutation.isPending}
+                  description="Ideal study goal per day"
+                />
+              </div>
+              {prefsError && (
+                <Alert variant="danger" title="Cannot Save">
+                  {prefsError}
+                </Alert>
+              )}
+              {prefsSaved && (
+                <Alert variant="success" title="Preferences Saved">
+                  Your study schedule has been updated. New plans will use these settings.
+                </Alert>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveStudyPrefs}
+                isLoading={updatePrefsMutation.isPending}
+                leftIcon={<Save className="w-3.5 h-3.5" />}
+              >
+                Save Study Schedule
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Data & Privacy: Export */}
       <Card>

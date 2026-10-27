@@ -2215,3 +2215,70 @@ export const UserPreferencesSchema = z
       path: ['max_daily_study_minutes'],
     }
   );
+
+/** Regex for HH:mm time strings (00:00 – 23:59) */
+const HHmmRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * Input schema for PATCH /api/v1/preferences.
+ * All fields are optional; only supplied fields are persisted.
+ * Cross-field refinements apply when both study-window times are provided.
+ */
+export const UpdatePreferencesInputSchema = z
+  .object({
+    timezone: z.string().min(1).nullable().optional(),
+    preferred_study_start: z
+      .string()
+      .regex(HHmmRegex, 'preferred_study_start must be in HH:mm format (e.g. "08:00")')
+      .nullable()
+      .optional(),
+    preferred_study_end: z
+      .string()
+      .regex(HHmmRegex, 'preferred_study_end must be in HH:mm format (e.g. "22:00")')
+      .nullable()
+      .optional(),
+    daily_minimum_minutes: z.number().int().min(0).max(1440).optional(),
+    daily_target_minutes: z.number().int().min(0).max(1440).optional(),
+    max_daily_study_minutes: z.number().int().min(0).max(1440).nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      const { preferred_study_start: start, preferred_study_end: end } = data;
+      if (start != null && end != null) {
+        return start < end;
+      }
+      return true;
+    },
+    {
+      message: 'preferred_study_start must be strictly earlier than preferred_study_end',
+      path: ['preferred_study_start'],
+    }
+  )
+  .refine(
+    (data) => {
+      const { daily_minimum_minutes: min, daily_target_minutes: target } = data;
+      if (min !== undefined && target !== undefined) {
+        return target >= min;
+      }
+      return true;
+    },
+    {
+      message: 'daily_target_minutes must be >= daily_minimum_minutes',
+      path: ['daily_target_minutes'],
+    }
+  )
+  .refine(
+    (data) => {
+      const { daily_target_minutes: target, max_daily_study_minutes: max } = data;
+      if (target !== undefined && max != null) {
+        return max >= target;
+      }
+      return true;
+    },
+    {
+      message: 'max_daily_study_minutes must be >= daily_target_minutes',
+      path: ['max_daily_study_minutes'],
+    }
+  );
+
+export type UpdatePreferencesInput = z.infer<typeof UpdatePreferencesInputSchema>;

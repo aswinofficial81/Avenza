@@ -46,11 +46,18 @@ export const PlannerProposalList: React.FC<PlannerProposalListProps> = ({
     }
   };
 
-  if (items.length === 0) {
+  // Only existing commitments (no proposed blocks) — show commitments with a clear note
+  const hasProposed = proposedBlocks.length > 0;
+  const hasExisting = existingCommitments.length > 0;
+
+  if (!hasProposed && !hasExisting) {
     return (
-      <Card className="p-8 text-center bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)]">
-        <p className="text-[var(--color-text-muted)] text-sm">
-          No tasks were scheduled for this date.
+      <Card className="py-10 px-6 text-center bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)]">
+        <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
+          No timeline to display
+        </p>
+        <p className="text-xs text-[var(--color-text-muted)] max-w-sm mx-auto leading-relaxed">
+          No tasks were proposed and no existing commitments were found in your study window for this date.
         </p>
       </Card>
     );
@@ -59,12 +66,15 @@ export const PlannerProposalList: React.FC<PlannerProposalListProps> = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-          Timeline ({proposedBlocks.length} proposed, {existingCommitments.length} existing)
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+          Timeline
+          <span className="ml-2 text-[var(--color-text-muted)] font-normal">
+            {hasProposed && `${proposedBlocks.length} proposed`}
+            {hasProposed && hasExisting && ' · '}
+            {hasExisting && `${existingCommitments.length} existing`}
+          </span>
         </h2>
-        <span className="text-xs text-[var(--color-text-muted)]">
-          Chronological sequence
-        </span>
+        <span className="text-xs text-[var(--color-text-muted)]">Chronological</span>
       </div>
 
       <div className="space-y-2">
@@ -74,24 +84,25 @@ export const PlannerProposalList: React.FC<PlannerProposalListProps> = ({
             return (
               <div
                 key={`existing-${idx}`}
-                className="flex items-center gap-4 p-3 rounded-lg border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-bg-subtle)]/50 opacity-80"
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg border border-dashed border-[var(--color-border-subtle)] bg-[var(--color-bg-subtle)]/50 opacity-75"
               >
-                <div className="w-28 shrink-0 font-mono text-xs text-[var(--color-text-muted)]">
+                {/* Time */}
+                <div className="w-28 shrink-0 font-mono text-xs text-[var(--color-text-muted)] whitespace-nowrap">
                   {formatTime(c.start)} – {formatTime(c.end)}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-[var(--color-text-muted)] truncate">
-                      {c.title}
-                    </span>
-                    <Badge variant="secondary" size="sm" className="text-[10px]">
-                      {c.source === 'google_calendar' ? 'Google Calendar' : 'Avenza Scheduled'}
-                    </Badge>
-                  </div>
+                {/* Title */}
+                <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-[var(--color-text-muted)] truncate">
+                    {c.title}
+                  </span>
+                  <Badge variant="secondary" size="sm">
+                    {c.source === 'google_calendar' ? 'Google Calendar' : 'Avenza'}
+                  </Badge>
                 </div>
-                <div className="text-xs text-[var(--color-text-muted)] font-mono">
-                  Occupied (Fixed)
-                </div>
+                {/* Fixed label */}
+                <span className="text-[10px] text-[var(--color-text-muted)] font-mono shrink-0">
+                  Fixed
+                </span>
               </div>
             );
           }
@@ -100,47 +111,49 @@ export const PlannerProposalList: React.FC<PlannerProposalListProps> = ({
           return (
             <div
               key={`proposed-${block.taskId}`}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)] hover:border-[var(--color-border-hover)] transition-all shadow-xs"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3.5 py-3 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)] hover:border-[var(--color-border-hover)] transition-colors"
             >
-              <div className="flex items-start sm:items-center gap-3">
-                <div className="w-28 shrink-0 font-mono text-sm font-semibold text-[var(--color-primary)]">
+              {/* Left: time + title */}
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="w-28 shrink-0 font-mono text-sm font-semibold text-[var(--color-primary)] whitespace-nowrap">
                   {formatTime(block.scheduledStart)} – {formatTime(block.scheduledEnd)}
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                     <Link
                       to={`/tasks/${block.taskId}`}
-                      className="text-sm font-semibold text-[var(--color-text-primary)] hover:underline hover:text-[var(--color-primary)]"
+                      className="text-sm font-semibold text-[var(--color-text-primary)] hover:underline hover:text-[var(--color-primary)] truncate"
                     >
                       {block.title}
                     </Link>
-                    <Badge variant={getPriorityVariant(block.priority)} size="sm" className="capitalize">
+                    <Badge variant={getPriorityVariant(block.priority)} size="sm" className="capitalize shrink-0">
                       {block.priority}
                     </Badge>
                     {block.isDurationDefaulted && (
-                      <Badge variant="warning" size="sm" className="text-[10px]">
-                        Provisional (30m default)
+                      <Badge variant="warning" size="sm" className="shrink-0">
+                        Provisional 30m
                       </Badge>
                     )}
                   </div>
                   {block.primaryReason && (
-                    <p className="text-xs text-[var(--color-text-muted)]">
+                    <p className="text-xs text-[var(--color-text-muted)] leading-snug">
                       {block.primaryReason}
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 self-end sm:self-center">
-                <span className="text-xs font-mono font-medium text-[var(--color-text-muted)] bg-[var(--color-bg-subtle)] px-2 py-0.5 rounded">
+              {/* Right: duration + link */}
+              <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                <span className="text-xs font-mono font-medium text-[var(--color-text-muted)] bg-[var(--color-bg-subtle)] border border-[var(--color-border-subtle)] px-2 py-0.5 rounded-md whitespace-nowrap">
                   {block.durationMinutes} min
                 </span>
                 <Link
                   to={`/tasks/${block.taskId}`}
-                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:underline"
+                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:underline whitespace-nowrap"
                 >
-                  View Details →
+                  View →
                 </Link>
               </div>
             </div>

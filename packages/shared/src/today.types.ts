@@ -14,12 +14,29 @@ export interface TodaySummary {
   targetProgress: number; // 0 to 100
 }
 
+/**
+ * Productivity streak calculated from completed tasks and focus sessions.
+ *
+ * A local calendar day qualifies when at least one task is completed
+ * OR the user completes at least 15 minutes of focus sessions.
+ */
+export interface ProductivityStreakSummary {
+  currentDays: number;
+  bestDays: number;
+  qualifiesToday: boolean;
+  qualifiesYesterday: boolean;
+  todayFocusMinutes: number;
+  todayCompletedTaskCount: number;
+  minimumFocusMinutes: number;
+}
+
 export type TodayTaskItem = TaskDto;
 
 export interface TodayResponse {
   date: string; // YYYY-MM-DD in user's timezone
   timezone: string; // IANA timezone string e.g. "Asia/Kolkata"
   summary: TodaySummary;
+  productivityStreak?: ProductivityStreakSummary;
   next: TodayTaskItem | null;
   overdue: TodayTaskItem[];
   dueToday: TodayTaskItem[];

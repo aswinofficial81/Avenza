@@ -11,12 +11,26 @@ import { PlannerContextCard } from '../features/planner/components/PlannerContex
 import { PlannerProposalList } from '../features/planner/components/PlannerProposalList';
 import { PlannerUnscheduledList } from '../features/planner/components/PlannerUnscheduledList';
 import { PlannerReviewModal } from '../features/planner/components/PlannerReviewModal';
+import { StudyPreferencesSetupModal } from '../features/preferences/components/StudyPreferencesSetupModal';
+
+/** Detects the configuration-required error message returned by the API */
+function isConfigurationRequired(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes('study window preferences') ||
+    msg.includes('configuration_required') ||
+    msg.includes('preferred_study_start') ||
+    msg.includes('preferred_study_end')
+  );
+}
 
 export const PlannerPage: React.FC = () => {
   const getTodayString = () => new Date().toISOString().slice(0, 10);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
   const [isDiscarded, setIsDiscarded] = useState<boolean>(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
+  const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
   const [applyError, setApplyError] = useState<string | null>(null);
   const [applySuccessMessage, setApplySuccessMessage] = useState<string | null>(null);
 
@@ -30,6 +44,9 @@ export const PlannerPage: React.FC = () => {
   } = useScheduleProposal(selectedDate, !isDiscarded);
 
   const applyMutation = useApplySchedule();
+
+  // Detect configuration errors surfaced by the proposal query
+  const needsSetup = isError && isConfigurationRequired(error);
 
   const handleDateChange = (newDate: string) => {
     setSelectedDate(newDate);
@@ -152,8 +169,18 @@ export const PlannerPage: React.FC = () => {
         </div>
       )}
 
-      {/* Query Error State */}
-      {!isDiscarded && !isLoading && isError && (
+      {/* Study Preferences Setup Required */}
+      {!isDiscarded && !isLoading && needsSetup && (
+        <ErrorState
+          title="Study Schedule Not Configured"
+          description="Avenza needs to know your available study hours before it can generate a plan. Set up your study window now and we'll generate your schedule immediately."
+          onRetry={() => setIsSetupModalOpen(true)}
+          retryLabel="Configure Study Schedule"
+        />
+      )}
+
+      {/* Generic Query Error State (non-configuration errors) */}
+      {!isDiscarded && !isLoading && isError && !needsSetup && (
         <ErrorState
           title="Failed to generate schedule"
           description={error instanceof Error ? error.message : 'An error occurred while computing the proposal.'}
@@ -168,18 +195,26 @@ export const PlannerPage: React.FC = () => {
           <PlannerContextCard proposal={proposal} />
 
           {/* Action Bar (Apply & Discard) */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-[var(--color-bg-subtle)] border border-[var(--color-border-subtle)] rounded-lg">
-            <div className="text-xs text-[var(--color-text-secondary)]">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3 bg-[var(--color-bg-subtle)] border border-[var(--color-border-subtle)] rounded-xl">
+            <div className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
               {proposal.proposedBlocks.length > 0 ? (
                 <span>
-                  <strong>{proposal.proposedBlocks.length} task(s)</strong> ready to schedule ({proposal.totalProposedMinutes}m total work). Review below before applying.
+                  <strong className="text-[var(--color-text-primary)]">
+                    {proposal.proposedBlocks.length} task{proposal.proposedBlocks.length !== 1 ? 's' : ''}
+                  </strong>
+                  {' ready to schedule — '}
+                  <strong className="text-[var(--color-text-primary)]">{proposal.totalProposedMinutes}m</strong>
+                  {' total. Review below before applying.'}
                 </span>
               ) : (
-                <span>No eligible tasks were scheduled for this date.</span>
+                <span className="flex items-center gap-2">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-text-muted)] shrink-0" />
+                  No eligible tasks to schedule for this date. All tasks may be complete, blocked, or outside your study window.
+                </span>
               )}
             </div>
 
-            <div className="flex items-center gap-2 self-end sm:self-center">
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
@@ -193,6 +228,7 @@ export const PlannerPage: React.FC = () => {
                 size="sm"
                 onClick={() => setIsReviewModalOpen(true)}
                 disabled={proposal.proposedBlocks.length === 0 || applyMutation.isPending}
+                className={proposal.proposedBlocks.length === 0 ? 'opacity-40 cursor-not-allowed' : ''}
               >
                 Apply Schedule
               </Button>
@@ -218,6 +254,13 @@ export const PlannerPage: React.FC = () => {
           />
         </div>
       )}
+
+      {/* Study Preferences Setup Modal */}
+      <StudyPreferencesSetupModal
+        isOpen={isSetupModalOpen}
+        onClose={() => setIsSetupModalOpen(false)}
+        onSaved={handleRefresh}
+      />
     </div>
   );
 };

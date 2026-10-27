@@ -43,7 +43,7 @@ export class AccountDeletionRecoveryWorker {
     private readonly client: SupabaseClient<Database> = getSupabaseAdminClient(),
     private readonly storageService: IStorageService = defaultStorageService,
     private readonly customRevokeHandler?: RevokeHandler
-  ) {}
+  ) { }
 
   public getWorkerId(): string {
     return this.workerId;
@@ -101,7 +101,7 @@ export class AccountDeletionRecoveryWorker {
           eq: (col: string, val: string) => Promise<{ error: unknown }>;
         };
       };
-      const queryTable = this.client.from as unknown as JobQueryFrom;
+      const queryTable = this.client.from.bind(this.client) as unknown as JobQueryFrom;
       const { data: candidates, error } = await queryTable('account_deletion_recovery_jobs')
         .select('*')
         .in('status', ['PENDING', 'RETRYING'])
@@ -257,7 +257,7 @@ export class AccountDeletionRecoveryWorker {
         eq: (col: string, val: string) => Promise<unknown>;
       };
     };
-    const queryTable = this.client.from as unknown as UpdateJobFrom;
+    const queryTable = this.client.from.bind(this.client) as unknown as UpdateJobFrom;
     await queryTable('account_deletion_recovery_jobs')
       .update({
         status: 'RETRYING',
@@ -283,7 +283,7 @@ export class AccountDeletionRecoveryWorker {
         eq: (col: string, val: string) => Promise<unknown>;
       };
     };
-    const queryTable = this.client.from as unknown as UpdateJobFrom;
+    const queryTable = this.client.from.bind(this.client) as unknown as UpdateJobFrom;
     await queryTable('account_deletion_recovery_jobs')
       .update({
         status,
@@ -312,7 +312,7 @@ export class AccountDeletionRecoveryWorker {
           };
         };
       };
-      const queryTable = this.client.from as unknown as CheckFrom;
+      const queryTable = this.client.from.bind(this.client) as unknown as CheckFrom;
 
       // 1. Check if any active jobs remain for this profile
       const { data: activeJobs } = await queryTable('account_deletion_recovery_jobs')
@@ -338,7 +338,7 @@ export class AccountDeletionRecoveryWorker {
           eq: (col: string, val: string) => Promise<unknown>;
         };
       };
-      const updateTable = this.client.from as unknown as TombstoneUpdateFrom;
+      const updateTable = this.client.from.bind(this.client) as unknown as TombstoneUpdateFrom;
       await updateTable('account_deletion_tombstones')
         .update({
           status: finalStatus,

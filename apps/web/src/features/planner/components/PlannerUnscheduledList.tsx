@@ -34,37 +34,40 @@ export const PlannerUnscheduledList: React.FC<PlannerUnscheduledListProps> = ({
   return (
     <div className="space-y-3 pt-2">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-          Unscheduled Tasks ({unscheduledTasks.length})
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+          Unscheduled Tasks
+          <span className="ml-2 text-[var(--color-text-muted)] font-normal">
+            {unscheduledTasks.length}
+          </span>
         </h2>
-        <span className="text-xs text-[var(--color-text-muted)]">
-          Tasks requiring action or deferred
-        </span>
+        <span className="text-xs text-[var(--color-text-muted)]">Requiring action or deferred</span>
       </div>
 
       <Card className="divide-y divide-[var(--color-border-subtle)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] overflow-hidden">
         {unscheduledTasks.map((t) => (
           <div
             key={t.taskId}
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 text-sm hover:bg-[var(--color-bg-subtle)]/50 transition-colors"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3.5 py-2.5 hover:bg-[var(--color-bg-subtle)]/50 transition-colors"
           >
-            <div className="flex items-center gap-2">
-              <Link
-                to={`/tasks/${t.taskId}`}
-                className="font-medium text-[var(--color-text-primary)] hover:underline hover:text-[var(--color-primary)]"
-              >
-                {t.title}
-              </Link>
-            </div>
+            {/* Task name */}
+            <Link
+              to={`/tasks/${t.taskId}`}
+              className="text-sm font-medium text-[var(--color-text-primary)] hover:underline hover:text-[var(--color-primary)] truncate min-w-0"
+            >
+              {t.title}
+            </Link>
 
-            <div className="flex items-center gap-3">
+            {/* Right cluster: badge + message + link */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               {getReasonBadge(t.reason)}
-              <span className="text-xs text-[var(--color-text-muted)]">
-                {t.reasonMessage}
-              </span>
+              {t.reasonMessage && (
+                <span className="text-xs text-[var(--color-text-muted)] truncate max-w-[200px]">
+                  {t.reasonMessage}
+                </span>
+              )}
               <Link
                 to={`/tasks/${t.taskId}`}
-                className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:underline ml-2"
+                className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:underline whitespace-nowrap"
               >
                 Edit →
               </Link>

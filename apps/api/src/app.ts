@@ -20,6 +20,7 @@ import { careerRoutes } from './modules/career/career.routes';
 import { plannerRoutes } from './modules/planner/planner.routes';
 import { analyticsRoutes } from './modules/analytics/analytics.routes';
 import { weeklyReviewRoutes } from './modules/weekly-review/weekly-review.routes';
+import { preferencesRoutes } from './modules/preferences/preferences.routes';
 
 export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   const app = fastify({
@@ -139,6 +140,9 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   // Register analytics routes
   app.register(analyticsRoutes);
   app.register(weeklyReviewRoutes);
+
+  // Register user preferences routes
+  app.register(preferencesRoutes);
 
   return app;
 }
