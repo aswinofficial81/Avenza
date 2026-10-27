@@ -287,7 +287,7 @@ export const GoalsPage: React.FC = () => {
               <div
                 key={goal.id}
                 onClick={() => navigate(`/goals/${goal.id}`)}
-                className="group relative p-4.5 rounded-2xl border border-border bg-surface hover:border-teal-500/30 hover:shadow-md transition-all cursor-pointer shadow-xs"
+                className="group relative rounded-2xl border border-border bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-teal-500/30 hover:shadow-md cursor-pointer"
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                   {/* Left: Title & Badges */}

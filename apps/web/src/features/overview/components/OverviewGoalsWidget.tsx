@@ -102,7 +102,7 @@ export const OverviewGoalsWidget: React.FC = () => {
                   </div>
 
                   <div className="space-y-1 pt-1">
-                    <Progress value={progress} className="h-1.5" />
+                    <Progress value={progress} label="" compact />
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Milestone className="w-3 h-3" />
